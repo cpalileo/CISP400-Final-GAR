@@ -58,8 +58,6 @@ public:
         return false;
     }
 
-
-
     void InitializeRobots() {
         srand(static_cast<unsigned int>(time(0)));
         int x, y;
@@ -75,17 +73,16 @@ public:
 
     void InitializeBatteries(int numBatteries){
         srand(static_cast<unsigned int>(time(0)));
+        int x, y;
 
-        for (int i = 0; i < numBatteries; ++i){
-            int x = rand() % 10;
-            int y = rand() % 10;
-            // DEBUG
-            cout << "Trying to place battery at: (" << x << ", " << y << ")" << endl;
-            if (GridArray[x][y] == 0){
-                GridArray[x][y] = 2; // Battery placed in cel if empty
-            } else {
-                --i; // Places battery in other cel if space is occupied
-            }
+        for (int i = 0; i < numBatteries; i++) {
+        // Find an empty cell
+            do {
+                x = rand() % 10;
+                y = rand() % 10;
+            } while (GridArray[x][y] != 0);  // Ensure the cell is empty
+
+            GridArray[x][y] = 2;  // Place the robot in the empty cell
         }
     }
 
@@ -100,6 +97,24 @@ public:
         GridArray[x][y] = 1;  // Place robot in cell
     }
 
+// TEST CASE
+// void PlaceRobot() {
+//     srand(static_cast<unsigned int>(time(0)));
+//     int x, y;
+//     do {
+//         x = rand() % 10;
+//         y = rand() % 10;
+//     } while (GridArray[x][y] != 0);
+
+//     GridArray[x][y] = 1;  // Place robot in cell
+
+//     // Place a battery to the right of the robot, if within grid boundaries
+//     if (x + 1 < 10) {
+//         GridArray[x + 1][y] = 2;  // Place a battery
+//     }
+// }
+
+
     void RemoveRobot(int x, int y) {
         if (x >= 0 && x < 10 && y >= 0 && y < 10) {
             GridArray[x][y] = 0;
@@ -113,7 +128,7 @@ public:
             // Return a value indicating an out-of-bounds cell
             return -1;
             }
-        }
+    }
 
 
     // In the Grid class:
@@ -138,100 +153,108 @@ private:
     int Energy;
     int TurnsSurvived;
     int TotalEnergyHarvested = 0;
+    Movement decisionDirection;
 
-    struct Gene {
-        SensorReading sensorReading;
-        SensorReading nextSensorReading;
-        Movement direction;
+    // struct Gene {
+    //     SensorReading sensorReading;
+    //     SensorReading nextSensorReading;
+    //     Movement direction;
+    // };
+    
+// TEST CASE
+struct Gene {
+    SensorReading sensorReading;
+    SensorReading nextSensorReading;
+    Movement direction;
+    float randomnessFactor; // New gene trait for randomness
+};
+
+
+
+    struct SensorData {
+        SensorReading north;
+        SensorReading south;
+        SensorReading east;
+        SensorReading west;
     };
 
     Gene genes[16];
     int currentPosition;
     int energy;
-    int currentGeneIndex;  // Added to keep track of the current gene being processed
+    int currentGeneIndex; 
 
 public:
     Robot(){
-        // Initialize genes randomly
         x = rand() % 10;
         y = rand() % 10;
         for (int i = 0; i < 16; ++i) {
             genes[i].sensorReading = static_cast<SensorReading>(rand() % 4);
             genes[i].nextSensorReading = static_cast<SensorReading>(rand() % 4);
-            genes[i].direction = static_cast<Movement>(rand() % 5);
+
+            // Generate a random value between 0 and 4 (inclusive) for direction, including RANDOM
+            int directionIndex = std::rand() % 5;
+            genes[i].direction = static_cast<Movement>(directionIndex);
+
+            // TEST CASE
+            genes[i].randomnessFactor = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
         }
 
-        // Initialize other properties
         currentPosition = rand() % 10;
         energy = 5;
-        currentGeneIndex = 0;  // Initialize currentGeneIndex to the first gene
+        currentGeneIndex = 0;
     }
+
+    SensorData currentSensorData;
 
     // Method to update sensors based on the grid
-    void UpdateSensors(const Grid& grid) {
-        int northContent = grid.GetContent(x, y + 1);
-        if (northContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (northContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
+void UpdateSensors(const Grid& grid) {
+    currentSensorData.north = static_cast<SensorReading>(grid.GetContent(x, y + 1));
+    currentSensorData.south = static_cast<SensorReading>(grid.GetContent(x, y - 1));
+    currentSensorData.east = static_cast<SensorReading>(grid.GetContent(x + 1, y));
+    currentSensorData.west = static_cast<SensorReading>(grid.GetContent(x - 1, y));
+}
 
-        int southContent = grid.GetContent(x, y - 1);
-        if (southContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (southContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
-
-        int eastContent = grid.GetContent(x + 1, y);
-        if (eastContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (eastContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
-
-        int westContent = grid.GetContent(x - 1, y);
-        if (westContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (westContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
-
-    }
 
     // Method to make decisions based on sensors and genes
     void MakeDecisions() {
-        if (genes[currentGeneIndex].sensorReading == OBJECT) {
-            // Turn left
-            genes[currentGeneIndex].direction = static_cast<Movement>((genes[currentGeneIndex].direction - 1 + 4) % 4);
-        } else if (genes[currentGeneIndex].sensorReading == CLEAR) {
-            // Move forward
-            Move();
-        } else if (genes[currentGeneIndex].sensorReading == BATTERY) {
-            // Turn right
-            genes[currentGeneIndex].direction = static_cast<Movement>((genes[currentGeneIndex].direction + 1) % 4);
+        // Check each direction and make a decision based on the gene's strategy
+        if (currentSensorData.north == genes[currentGeneIndex].sensorReading) {
+            decisionDirection = genes[currentGeneIndex].direction; // Use gene's direction if sensor reading matches
+        } else if (currentSensorData.south == genes[currentGeneIndex].sensorReading) {
+            decisionDirection = genes[currentGeneIndex].direction;
+        } else if (currentSensorData.east == genes[currentGeneIndex].sensorReading) {
+            decisionDirection = genes[currentGeneIndex].direction;
+        } else if (currentSensorData.west == genes[currentGeneIndex].sensorReading) {
+            decisionDirection = genes[currentGeneIndex].direction;
+        } else {
+            // If no sensor data matches the current gene, choose a random direction
+            decisionDirection = static_cast<Movement>(rand() % 4);
         }
+
+        // TEST CASE
+        float randomValue = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        if (randomValue < genes[currentGeneIndex].randomnessFactor) {
+            decisionDirection = static_cast<Movement>(rand() % 5); // Includes RANDOM direction
+        }
+
+        // Increment the gene index for the next decision
+        currentGeneIndex = (currentGeneIndex + 1) % 16; 
     }
+
+
 
     // Method to move the robot and update position and energy
     void Move() {
-        // Update x and y based on the direction
-        if (genes[currentGeneIndex].direction == NORTH && y < 9) {
-            y++;
-        } else if (genes[currentGeneIndex].direction == SOUTH && y > 0) {
-            y--;
-        } else if (genes[currentGeneIndex].direction == EAST && x < 9) {
-            x++;
-        } else if (genes[currentGeneIndex].direction == WEST && x > 0) {
-            x--;
+        // Modify this method to use the direction decided in MakeDecisions
+        // For example, if the decision is to move north:
+        if (decisionDirection == NORTH) {
+            y = (y < 9) ? y + 1 : y; // Ensuring the robot doesn't go out of bounds
+        } else if (decisionDirection == SOUTH) {
+            y = (y > 0) ? y - 1: y;
+        } else if (decisionDirection == EAST) {
+            x = (x < 9) ? x + 1 : x;
+        } else if (decisionDirection == WEST) {
+            x = (x > 0) ? x - 1 : x;
         }
 
         energy -= 1; // 1 energy depleted with every move
@@ -250,30 +273,38 @@ public:
             cout << "Robot found battery at (" << x << ", " << y << ")" << endl;
             energy += 5;
             TotalEnergyHarvested += 5;
-            grid.ConsumeBattery(x, y); // Consume the battery from the map
+            TurnsSurvived += 5 * 5; // Update TurnsSurvived based on energy harvested
+            grid.ConsumeBattery(x, y);
         }
-    // //DEBUG
-    //     cout << "Handled energy at (" << x << ", " << y << ") | Energy now: " << energy << endl;
-
+        // DEBUG
+        cout << "Handled energy at (" << x << ", " << y << ") | Energy now: " << energy << endl;
     }
 
+
     void ResetEnergy() {
-        energy = 5;
+        // energy = 5;
+        energy = 50; //FIX ME TESTING PURPOSES ONLY
     }
 
     void RunRound(Grid& grid, int robotNumber) {
-        //DEBUG
+        ResetEnergy();
+        TotalEnergyHarvested = 0; // Reset total energy harvested
+        TurnsSurvived = 0;        // Reset turns survived
+        // DEBUG
         cout << "Robot " << robotNumber << " starting at (" << x << ", " << y << ") with energy " << energy << endl;
-        ResetEnergy();  // Reset energy at the start of the round
+
         while (energy > 0) {
             UpdateSensors(grid);
             MakeDecisions();
             Move();
-            HandleEnergy(grid);
+            HandleEnergy(grid); // Energy handling might change TurnsSurvived
             TurnsSurvived++;
         }
-            cout << "Robot " << robotNumber << " | Total Harvested: " << TotalEnergyHarvested << " | Turns Survived: " << TurnsSurvived << endl;
+
+        cout << "Robot " << robotNumber << " | Total Harvested: " << TotalEnergyHarvested 
+            << " | Turns Survived: " << TurnsSurvived << endl;
     }
+
 
     int GetTotalEnergyHarvested() const {
         return TotalEnergyHarvested;
