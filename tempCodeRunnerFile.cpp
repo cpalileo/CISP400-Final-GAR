@@ -5,10 +5,6 @@
 using namespace std;
 
 
-struct FitnessData {
-    double averageFitness;
-};
-
 class Grid {
 private:
     // Sets up 2D array
@@ -34,43 +30,43 @@ public:
             do {
                 x = rand() % 10;
                 y = rand() % 10;
-            } while (GridArray[x][y] != 0 && IsAdjacent(x, y, 3));
+            } while (GridArray[x][y] != 0 && AdjacentObject(x, y));
 
-            GridArray[x][y] = 3;  // Object/Wall is placed in the cell
+            GridArray[x][y] = 1;  // Random Object is placed in cel
         }
     }
 
-
     // Check adjacent cel other objects to prevent possible robot encapsulation
-    bool IsAdjacent(int x, int y, int valueToCheck) const {
+    bool AdjacentObject(int x, int y) const {
         for (int i = -1; i <= 1; ++i) {
             for (int j = -1; j <= 1; ++j) {
-                if (i == 0 && j == 0) continue; // Skip the current cell
-
                 int newX = x + i;
                 int newY = y + j;
 
-                if (newX >= 0 && newX < 10 && newY >= 0 && newY < 10 && GridArray[newX][newY] == valueToCheck) {
-                    return true; // Adjacent cell has the specified value
+                // Check if cel is within map walls and contains object
+                if (newX >= 0 && newX < 10 && newY >= 0 && newY < 10 && GridArray[newX][newY] == 1) {
+                    return true;  // Object has an adjacent object
                 }
             }
         }
-        return false;
+
+        return false;  // Object not adjacent to another object
     }
 
 
-
-    void InitializeRobots() {
+    void InitializeRobots(int numBots) {
         srand(static_cast<unsigned int>(time(0)));
-        int x, y;
 
-        // Find an empty cell
-        do {
-            x = rand() % 10;
-            y = rand() % 10;
-        } while (GridArray[x][y] != 0);  // Ensure the cell is empty
+        for (int i = 0; i < numBots; ++i) {
+            int x, y;
 
-        GridArray[x][y] = 1;  // Place the robot in the empty cell
+            do {
+                x = rand() % 10;
+                y = rand() % 10;
+            } while (GridArray[x][y] != 0);
+
+            GridArray[x][y] = 1;
+        }
     }
 
     void InitializeBatteries(int numBatteries){
@@ -79,30 +75,11 @@ public:
         for (int i = 0; i < numBatteries; ++i){
             int x = rand() % 10;
             int y = rand() % 10;
-            // DEBUG
-            cout << "Trying to place battery at: (" << x << ", " << y << ")" << endl;
             if (GridArray[x][y] == 0){
                 GridArray[x][y] = 2; // Battery placed in cel if empty
             } else {
                 --i; // Places battery in other cel if space is occupied
             }
-        }
-    }
-
-    void PlaceRobot() {
-        srand(static_cast<unsigned int>(time(0)));
-        int x, y;
-        do {
-            x = rand() % 10;
-            y = rand() % 10;
-        } while (GridArray[x][y] != 0);
-
-        GridArray[x][y] = 1;  // Place robot in cell
-    }
-
-    void RemoveRobot(int x, int y) {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
-            GridArray[x][y] = 0;
         }
     }
 
@@ -112,16 +89,6 @@ public:
         } else {
             // Return a value indicating an out-of-bounds cell
             return -1;
-            }
-        }
-
-
-    // In the Grid class:
-    void ConsumeBattery(int x, int y) {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
-            GridArray[x][y] = 0; // Remove the battery from the grid
-        //DEBUG
-        cout << "Battery consumed at: (" << x << ", " << y << ")" << endl;
         }
     }
 };
@@ -136,8 +103,8 @@ private:
     int y;
     int Position; // Holds the current location of the robot
     int Energy;
+    int TotalEnergyHarvested;
     int TurnsSurvived;
-    int TotalEnergyHarvested = 0;
 
     struct Gene {
         SensorReading sensorReading;
@@ -234,45 +201,42 @@ public:
             x--;
         }
 
-        energy -= 1; // 1 energy depleted with every move
-
-    // //DEBUG
-    // cout << "Robot moved to (" << x << ", " << y << ") | Energy after move: " << energy << endl;
-
+        energy -+ 1; // 1 energy depleted with every move
     }
 
     // Method to handle energy depletion and restoration
-    void HandleEnergy(Grid& grid) {
+    void HandleEnergy(const Grid& grid) {
         int cellContent = grid.GetContent(x, y);
 
         if (cellContent == 2) {
-            // DEBUG
-            cout << "Robot found battery at (" << x << ", " << y << ")" << endl;
+            // battery found
             energy += 5;
             TotalEnergyHarvested += 5;
-            grid.ConsumeBattery(x, y); // Consume the battery from the map
         }
-    // //DEBUG
-    //     cout << "Handled energy at (" << x << ", " << y << ") | Energy now: " << energy << endl;
-
     }
 
     void ResetEnergy() {
         energy = 5;
     }
 
-    void RunRound(Grid& grid, int robotNumber) {
-        //DEBUG
-        cout << "Robot " << robotNumber << " starting at (" << x << ", " << y << ") with energy " << energy << endl;
-        ResetEnergy();  // Reset energy at the start of the round
-        while (energy > 0) {
+    int RunRound(const Grid& grid) {
+        ResetEnergy(); // Reset energy at the start of the round
+        int maxTurns = 500; // Example maximum turns limit
+
+        if (maxTurns > 499) {
+            cout << "ERROR" << endl;
+            return 0;
+        }
+
+        for (int turn = 0; turn < maxTurns && energy > 0; ++turn) {
             UpdateSensors(grid);
             MakeDecisions();
             Move();
             HandleEnergy(grid);
             TurnsSurvived++;
+    // //Debugging
+    // std::cout << "Robot at (" << x << ", " << y << ") | Energy: " << energy << " | Total Harvested: " << TotalEnergyHarvested << " | Turns Survived: " << TurnsSurvived << std::endl;
         }
-            cout << "Robot " << robotNumber << " | Total Harvested: " << TotalEnergyHarvested << " | Turns Survived: " << TurnsSurvived << endl;
     }
 
     int GetTotalEnergyHarvested() const {
@@ -286,73 +250,87 @@ public:
     int GetEnergy() const {
         return energy;
     }
-
-    int GetX() const {
-        return x;
-    }
-
-    int GetY() const {
-        return y;
-    }
 };
 
 
 class Simulation {
 private:
-    Robot population[200];
+    Robot robot;
+    Robot population[10];  // Array stores the robot population
     int generation;
-    FitnessData generationFitness[10]; // Using the FitnessData struct to store fitness data
 
 public:
-    Simulation() : generation(0) {
-        for (auto &robot : population) {
-            robot = Robot();
+    Simulation(int populationSize) : generation(0) {
+        // Initialize population with random robots
+        for (int i = 0; i < populationSize; ++i) {
+            population[i] = Robot();  // Add random robot to population
         }
     }
 
-    void RunGeneration(Grid& grid) {
-        double totalFitness = 0;
 
-        for (int i = 0; i < 200; ++i) {
-            grid.PlaceRobot();
-            population[i].RunRound(grid, i + 1);
-            
-            // Get the robot's position for removal
-            int x = population[i].GetX();
-            int y = population[i].GetY();
-            grid.RemoveRobot(x, y);
+    void GenerationStep(const Grid& grid) {
+        robot.UpdateSensors(grid);
+        robot.MakeDecisions();
+        robot.Move();
+        robot.HandleEnergy(grid);
 
-            totalFitness += static_cast<double>(population[i].GetTotalEnergyHarvested()) / population[i].GetTurnsSurvived();
+        for (int i = 0; i < 10; ++i) {
+            population[i].UpdateSensors(grid);
+            population[i].MakeDecisions();
+            population[i].Move();
+            population[i].HandleEnergy(grid);
         }
+    }
 
-        generationFitness[generation].averageFitness = totalFitness / 200;
+    void RunSimulation(const Grid& grid, int numGenerations, int turnsPerGeneration) {
+        for (int gen = 0; gen < numGenerations; ++gen) {
+            RunGeneration(grid);
+            PrintGenerationStats();
+        }
+    }
+
+    void RunGeneration(const Grid& grid) {
+        for (int i = 0; i < 10; ++i) {
+            population[i].RunRound(grid);
+        }
         ++generation;
     }
 
-    void PrintAllFitnessData() const {
-        cout << "\nGeneration Fitness Data:\n";
-        for (int i = 0; i < generation; ++i) {
-            cout << "Generation " << (i + 1) << ": Average Fitness = " << generationFitness[i].averageFitness << endl;
+
+    void PrintGenerationStats() const {
+        long long totalEnergyHarvested = 0;
+        long long totalTurns = 0;
+
+        for (int i = 0; i < 10; ++i) {
+            totalEnergyHarvested += population[i].GetTotalEnergyHarvested();
+            totalTurns += population[i].GetTurnsSurvived();
         }
+
+        double averageFitness;
+        if (totalTurns == 0) {
+            averageFitness = 0.0;
+        } else {
+            averageFitness = static_cast<double>(totalEnergyHarvested) / totalTurns;
+        }
+
+        std::cout << "Generation: " << generation << "\n";
+        std::cout << std::fixed << std::setprecision(3);
+        std::cout << "Average Fitness: " << averageFitness << "\n";
+        std::cout << "------------------------\n";
     }
 
-    void RunSimulation(Grid& grid, int numGenerations) {
-        for (int gen = 0; gen < numGenerations; ++gen) {
-            RunGeneration(grid);
-        }
-        PrintAllFitnessData();
-    }
+
 };
 
 
 int main() {
     Grid grid;
     grid.InitializeObjects(20);
-    grid.InitializeRobots();
+    grid.InitializeRobots(10);
     grid.InitializeBatteries(40);
 
-    Simulation simulation;
-    simulation.RunSimulation(grid, 10);
+    Simulation simulation(10);
+    simulation.RunSimulation(grid, 10, 200);
 
     return 0;
 }
