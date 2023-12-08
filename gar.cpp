@@ -157,8 +157,6 @@ private:
     enum Movement {NORTH, SOUTH, EAST, WEST, RANDOM};
     int x;
     int y;
-    int Position; // Holds the current location of the robot
-    int Energy;
     int TurnsSurvived;
     int TotalEnergyHarvested = 0;
     Movement decisionDirection;
@@ -168,7 +166,7 @@ private:
     //     SensorReading nextSensorReading;
     //     Movement direction;
     // };
-    
+
 // TEST CASE
 struct Gene {
     SensorReading sensorReading;
@@ -192,9 +190,15 @@ struct Gene {
     int currentGeneIndex; 
 
 public:
+        // x = rand() % 10;
+        // y = rand() % 10;
+        void setPosition(int newX, int newY) {
+            x = newX;
+            y = newY;
+        }
+
     Robot(){
-        x = rand() % 10;
-        y = rand() % 10;
+
         for (int i = 0; i < 16; ++i) {
             genes[i].sensorReading = static_cast<SensorReading>(rand() % 4);
             genes[i].nextSensorReading = static_cast<SensorReading>(rand() % 4);
@@ -216,6 +220,7 @@ public:
 
     }
 
+
     SensorData currentSensorData;
 
     // Method to update sensors based on the grid
@@ -229,6 +234,10 @@ void UpdateSensors(const Grid& grid) {
 
     // Method to make decisions based on sensors and genes
     void MakeDecisions() {
+            // SET DEBUG BREAKPOINT HERE
+
+        //DEBUG
+cout << "Start MakdeDecisions() Robot state update at Position: (" << x << ", " << y << ") - Energy: " << energy << endl;
 
         if (currentSensorData.north == BATTERY) {decisionDirection = NORTH;}
             else if (currentSensorData.south == BATTERY) {decisionDirection = SOUTH;}
@@ -260,7 +269,10 @@ void UpdateSensors(const Grid& grid) {
         currentGeneIndex = (currentGeneIndex + 1) % 16; 
 
         // DEBUG
-        cout << "Decision made: " << decisionDirection << endl; // Add this line
+cout << "Sensor Readings - N: " << currentSensorData.north << ", S: " << currentSensorData.south
+     << ", E: " << currentSensorData.east << ", W: " << currentSensorData.west << endl;
+cout << "Decision based on sensors: " << decisionDirection << endl;
+
 
     }
 
@@ -269,7 +281,15 @@ void UpdateSensors(const Grid& grid) {
     // Method to move the robot and update position and energy
 // Method to move the robot and update position and energy
 void Move(const Grid& grid) {
+
+    // SET DEBUG BREAKPOINT HERE
+
     bool hasValidMove = true;
+
+// DEBUG
+cout << "Start Move() Robot state update at Position: (" << x << ", " << y << ") - Energy: " << energy << endl;
+// DEBUG
+cout << "Start For Loop in Move() Robot state update at Position: (" << x << ", " << y << ") - Energy: " << energy << endl;
 
     for (int step = 0; step < 3; ++step) {
         UpdateSensors(grid);
@@ -291,10 +311,10 @@ void Move(const Grid& grid) {
             break;
         }
 
-        // DEBUG: Show sensor readings and decision before moving
-        cout << "Sensors: N=" << currentSensorData.north << ", S=" << currentSensorData.south
-             << ", E=" << currentSensorData.east << ", W=" << currentSensorData.west << endl;
-        cout << "Before Move Step " << step << ": Position: (" << x << ", " << y << "). Decision: " << decisionDirection << endl;
+cout << "Attempting Move. Current Position: (" << x << ", " << y << "). Decision: " << decisionDirection << endl;
+cout << "Adjacent Cells: N=" << grid.GetContent(x, y + 1) << ", S=" << grid.GetContent(x, y - 1)
+     << ", E=" << grid.GetContent(x + 1, y) << ", W=" << grid.GetContent(x - 1, y) << endl;
+
 
         switch (decisionDirection) {
             case NORTH:
@@ -326,7 +346,8 @@ void Move(const Grid& grid) {
     }
 
     if (!hasValidMove) {
-        cout << "Move ended due to lack of valid moves." << endl;
+cout << "Robot is surrounded and cannot move. Current Position: (" << x << ", " << y << ")" << endl;
+
     }
 }
 
@@ -337,7 +358,11 @@ void Move(const Grid& grid) {
 
     // Method to handle energy depletion and restoration
     void HandleEnergy(Grid& grid) {
+            // SET DEBUG BREAKPOINT HERE
+
         int cellContent = grid.GetContent(x, y);
+        //DEBUG
+cout << "Robot state update at Position: (" << x << ", " << y << ") - Energy: " << energy << endl;
 
         if (cellContent == 2) {
             // DEBUG
@@ -405,45 +430,56 @@ void Move(const Grid& grid) {
 
 class Simulation {
 private:
-    Robot population[200];
+    Robot* population[200]; // Array of pointers to Robot objects
     int generation;
-    FitnessData generationFitness[10]; // Using the FitnessData struct to store fitness data
+    FitnessData generationFitness[10];
 
 public:
     Simulation() : generation(0) {
-        for (auto &robot : population) {
-            robot = Robot();
+        for (int i = 0; i < 200; ++i) {
+            population[i] = nullptr; // Initialize pointers to null
         }
     }
 
-void RunGeneration(Grid& grid) {
-
-    //DEBUG
-    grid.PrintGrid(); // This will print the state of the grid before each robot's round
-
-    double totalFitness = 0;
-
-    for (int i = 0; i < 200; ++i) {
-        grid.PlaceRobot();
-        // After placing a robot, print the grid state
-        grid.PrintGrid();
-
-        population[i].RunRound(grid, i + 1);
-
-        // Get the robot's position for removal
-        int x = population[i].GetX();
-        int y = population[i].GetY();
-        grid.RemoveRobot(x, y);
-
-        // After removing a robot, print the grid state
-        grid.PrintGrid();
-
-        totalFitness += static_cast<double>(population[i].GetTotalEnergyHarvested()) / population[i].GetTurnsSurvived();
+    ~Simulation() {
+        for (int i = 0; i < 200; ++i) {
+            delete population[i]; // Clean up memory
+        }
     }
 
-    generationFitness[generation].averageFitness = totalFitness / 200;
-    ++generation;
-}
+    void RunGeneration(Grid& grid) {
+        double totalFitness = 0;
+
+        for (int i = 0; i < 200; ++i) {
+            // Lazy initialization of Robot
+            if (population[i] == nullptr) {
+                population[i] = new Robot(); // Create a new robot
+            }
+
+            // Set a new random position for the robot
+            int newX = rand() % 10;
+            int newY = rand() % 10;
+            population[i]->setPosition(newX, newY);
+
+            grid.PlaceRobot();
+            grid.PrintGrid();
+
+            population[i]->RunRound(grid, i + 1);
+
+            // Get position for removal
+            int x = population[i]->GetX();
+            int y = population[i]->GetY();
+            grid.RemoveRobot(x, y);
+
+            grid.PrintGrid();
+
+            totalFitness += static_cast<double>(population[i]->GetTotalEnergyHarvested()) / population[i]->GetTurnsSurvived();
+        }
+
+        generationFitness[generation].averageFitness = totalFitness / 200;
+        ++generation;
+    }
+
 
 
     void PrintAllFitnessData() const {
@@ -463,6 +499,8 @@ void RunGeneration(Grid& grid) {
 
 
 int main() {
+    // DEBUG
+    cout << "Begin Program" << endl;
     Grid grid;
     srand(static_cast<unsigned int>(time(0))); // Initialize random seed once
     // DEBUG
