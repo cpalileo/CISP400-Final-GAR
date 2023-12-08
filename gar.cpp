@@ -26,8 +26,6 @@ public:
 
     // Optional Task: Place obstacles around map
     void InitializeObjects(int numObjects) {
-        srand(static_cast<unsigned int>(time(0)));
-
         for (int i = 0; i < numObjects; ++i) {
             int x, y;
 
@@ -59,7 +57,6 @@ public:
     }
 
     void InitializeRobots() {
-        srand(static_cast<unsigned int>(time(0)));
         int x, y;
 
         // Find an empty cell
@@ -72,7 +69,6 @@ public:
     }
 
     void InitializeBatteries(int numBatteries){
-        srand(static_cast<unsigned int>(time(0)));
         int x, y;
 
         for (int i = 0; i < numBatteries; i++) {
@@ -86,20 +82,19 @@ public:
         }
     }
 
-    void PlaceRobot() {
-        srand(static_cast<unsigned int>(time(0)));
-        int x, y;
-        do {
-            x = rand() % 10;
-            y = rand() % 10;
-        } while (GridArray[x][y] != 0);
+void PlaceRobot() {
+    int x, y;
+    do {
+        x = rand() % 10;
+        y = rand() % 10;
+    } while (GridArray[x][y] != 0);
 
-        GridArray[x][y] = 1;  // Place robot in cell
-    }
+    GridArray[x][y] = 1;  // Place robot in cell
+    cout << "Robot placed at: (" << x << ", " << y << ")" << endl;
+}
 
 // TEST CASE
 // void PlaceRobot() {
-//     srand(static_cast<unsigned int>(time(0)));
 //     int x, y;
 //     do {
 //         x = rand() % 10;
@@ -115,11 +110,12 @@ public:
 // }
 
 
-    void RemoveRobot(int x, int y) {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
-            GridArray[x][y] = 0;
-        }
+void RemoveRobot(int x, int y) {
+    if (x >= 0 && x < 10 && y >= 0 && y < 10) {
+        GridArray[x][y] = 0;
+        cout << "Robot removed from: (" << x << ", " << y << ")" << endl;
     }
+}
 
     int GetContent(int x, int y) const {
         if (x >= 0 && x < 10 && y >= 0 && y < 10) {
@@ -139,6 +135,18 @@ public:
         cout << "Battery consumed at: (" << x << ", " << y << ")" << endl;
         }
     }
+
+    // DEBUG METHOD
+    void PrintGrid() const {
+    cout << "Current Grid State:" << endl;
+    for (int i = 0; i < 10; ++i) {
+        for (int j = 0; j < 10; ++j) {
+            cout << GridArray[i][j] << " ";
+        }
+        cout << endl;
+    }
+}
+
 };
 
 
@@ -202,6 +210,10 @@ public:
         currentPosition = rand() % 10;
         energy = 5;
         currentGeneIndex = 0;
+
+        //DEBUG
+        cout << "New Robot created at: (" << x << ", " << y << ")" << endl;
+
     }
 
     SensorData currentSensorData;
@@ -217,19 +229,26 @@ void UpdateSensors(const Grid& grid) {
 
     // Method to make decisions based on sensors and genes
     void MakeDecisions() {
-        // Check each direction and make a decision based on the gene's strategy
-        if (currentSensorData.north == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction; // Use gene's direction if sensor reading matches
-        } else if (currentSensorData.south == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction;
-        } else if (currentSensorData.east == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction;
-        } else if (currentSensorData.west == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction;
-        } else {
-            // If no sensor data matches the current gene, choose a random direction
-            decisionDirection = static_cast<Movement>(rand() % 4);
-        }
+
+        if (currentSensorData.north == BATTERY) {decisionDirection = NORTH;}
+            else if (currentSensorData.south == BATTERY) {decisionDirection = SOUTH;}
+            else if (currentSensorData.east == BATTERY) {decisionDirection = EAST;}
+            else if (currentSensorData.west == BATTERY) {decisionDirection = WEST;}
+            else {
+                // Check each direction and make a decision based on the gene's strategy
+                if (currentSensorData.north == genes[currentGeneIndex].sensorReading) {
+                    decisionDirection = genes[currentGeneIndex].direction; // Use gene's direction if sensor reading matches
+                } else if (currentSensorData.south == genes[currentGeneIndex].sensorReading) {
+                    decisionDirection = genes[currentGeneIndex].direction;
+                } else if (currentSensorData.east == genes[currentGeneIndex].sensorReading) {
+                    decisionDirection = genes[currentGeneIndex].direction;
+                } else if (currentSensorData.west == genes[currentGeneIndex].sensorReading) {
+                    decisionDirection = genes[currentGeneIndex].direction;
+                } else {
+                    // If no sensor data matches the current gene, choose a random direction
+                    decisionDirection = static_cast<Movement>(rand() % 4);
+                }
+            }
 
         // TEST CASE
         float randomValue = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -239,30 +258,82 @@ void UpdateSensors(const Grid& grid) {
 
         // Increment the gene index for the next decision
         currentGeneIndex = (currentGeneIndex + 1) % 16; 
+
+        // DEBUG
+        cout << "Decision made: " << decisionDirection << endl; // Add this line
+
     }
 
 
 
     // Method to move the robot and update position and energy
-    void Move() {
-        // Modify this method to use the direction decided in MakeDecisions
-        // For example, if the decision is to move north:
-        if (decisionDirection == NORTH) {
-            y = (y < 9) ? y + 1 : y; // Ensuring the robot doesn't go out of bounds
-        } else if (decisionDirection == SOUTH) {
-            y = (y > 0) ? y - 1: y;
-        } else if (decisionDirection == EAST) {
-            x = (x < 9) ? x + 1 : x;
-        } else if (decisionDirection == WEST) {
-            x = (x > 0) ? x - 1 : x;
+// Method to move the robot and update position and energy
+void Move(const Grid& grid) {
+    bool hasValidMove = true;
+
+    for (int step = 0; step < 3; ++step) {
+        UpdateSensors(grid);
+
+        // Break if a battery is in the current cell
+        if (grid.GetContent(x, y) == BATTERY) break;
+
+        // Check if the robot is surrounded by obstacles or batteries on all sides
+        if ((currentSensorData.north == OBJECT || currentSensorData.north == BATTERY) &&
+            (currentSensorData.south == OBJECT || currentSensorData.south == BATTERY) &&
+            (currentSensorData.east == OBJECT || currentSensorData.east == BATTERY) &&
+            (currentSensorData.west == OBJECT || currentSensorData.west == BATTERY)) {
+            hasValidMove = false;
+            cout << "No valid moves available. Surrounded by: ";
+            cout << "North - " << currentSensorData.north << ", ";
+            cout << "South - " << currentSensorData.south << ", ";
+            cout << "East - " << currentSensorData.east << ", ";
+            cout << "West - " << currentSensorData.west << endl;
+            break;
         }
 
-        energy -= 1; // 1 energy depleted with every move
+        // DEBUG: Show sensor readings and decision before moving
+        cout << "Sensors: N=" << currentSensorData.north << ", S=" << currentSensorData.south
+             << ", E=" << currentSensorData.east << ", W=" << currentSensorData.west << endl;
+        cout << "Before Move Step " << step << ": Position: (" << x << ", " << y << "). Decision: " << decisionDirection << endl;
 
-    // //DEBUG
-    // cout << "Robot moved to (" << x << ", " << y << ") | Energy after move: " << energy << endl;
+        switch (decisionDirection) {
+            case NORTH:
+                y = (y > 0) ? y - 1 : y;
+                break;
+            case SOUTH:
+                y = (y < 9) ? y + 1 : y;
+                break;
+            case EAST:
+                x = (x < 9) ? x + 1 : x;
+                break;
+            case WEST:
+                x = (x > 0) ? x - 1 : x;
+                break;
+            default:
+                cout << "Random or undefined decision direction. Not moving." << endl;
+                break;  // RANDOM or other undefined cases
+        }
 
+        energy -= 1;  // Deduct energy per movement step
+
+        // DEBUG: Show position and energy after moving
+        cout << "After Move Step " << step << ": Position: (" << x << ", " << y << "). Energy: " << energy << endl;
+
+        if (energy <= 0) {
+            cout << "Energy depleted. Stopping movement." << endl;
+            break;  // Stop if energy runs out
+        }
     }
+
+    if (!hasValidMove) {
+        cout << "Move ended due to lack of valid moves." << endl;
+    }
+}
+
+
+
+
+
 
     // Method to handle energy depletion and restoration
     void HandleEnergy(Grid& grid) {
@@ -282,11 +353,15 @@ void UpdateSensors(const Grid& grid) {
 
 
     void ResetEnergy() {
-        // energy = 5;
-        energy = 50; //FIX ME TESTING PURPOSES ONLY
+        energy = 5;
+        // energy = 50; //FIX ME TESTING PURPOSES ONLY
     }
 
     void RunRound(Grid& grid, int robotNumber) {
+
+        // DEBUG
+        grid.PrintGrid(); // This will print the state of the grid after each movement
+
         ResetEnergy();
         TotalEnergyHarvested = 0; // Reset total energy harvested
         TurnsSurvived = 0;        // Reset turns survived
@@ -296,7 +371,7 @@ void UpdateSensors(const Grid& grid) {
         while (energy > 0) {
             UpdateSensors(grid);
             MakeDecisions();
-            Move();
+            Move(grid);
             HandleEnergy(grid); // Energy handling might change TurnsSurvived
             TurnsSurvived++;
         }
@@ -341,24 +416,35 @@ public:
         }
     }
 
-    void RunGeneration(Grid& grid) {
-        double totalFitness = 0;
+void RunGeneration(Grid& grid) {
 
-        for (int i = 0; i < 200; ++i) {
-            grid.PlaceRobot();
-            population[i].RunRound(grid, i + 1);
-            
-            // Get the robot's position for removal
-            int x = population[i].GetX();
-            int y = population[i].GetY();
-            grid.RemoveRobot(x, y);
+    //DEBUG
+    grid.PrintGrid(); // This will print the state of the grid before each robot's round
 
-            totalFitness += static_cast<double>(population[i].GetTotalEnergyHarvested()) / population[i].GetTurnsSurvived();
-        }
+    double totalFitness = 0;
 
-        generationFitness[generation].averageFitness = totalFitness / 200;
-        ++generation;
+    for (int i = 0; i < 200; ++i) {
+        grid.PlaceRobot();
+        // After placing a robot, print the grid state
+        grid.PrintGrid();
+
+        population[i].RunRound(grid, i + 1);
+
+        // Get the robot's position for removal
+        int x = population[i].GetX();
+        int y = population[i].GetY();
+        grid.RemoveRobot(x, y);
+
+        // After removing a robot, print the grid state
+        grid.PrintGrid();
+
+        totalFitness += static_cast<double>(population[i].GetTotalEnergyHarvested()) / population[i].GetTurnsSurvived();
     }
+
+    generationFitness[generation].averageFitness = totalFitness / 200;
+    ++generation;
+}
+
 
     void PrintAllFitnessData() const {
         cout << "\nGeneration Fitness Data:\n";
@@ -378,12 +464,29 @@ public:
 
 int main() {
     Grid grid;
+    srand(static_cast<unsigned int>(time(0))); // Initialize random seed once
+    // DEBUG
+    cout << "Begin Initializing Objects" << endl;
     grid.InitializeObjects(20);
+    // DEBUG
+    cout << "Objects Initialized."
+         << "Begin Initializing Robots" << endl;
     grid.InitializeRobots();
+    // DEBUG
+    cout << "Robots Initialized." 
+         << "Begin Initializing Batteries" << endl;
     grid.InitializeBatteries(40);
+    // DEBUG
+    cout << "Batteries Initialized" << endl;
+
+    // DEBUG
+    grid.PrintGrid(); // This will print the initial state of the grid
+
 
     Simulation simulation;
-    simulation.RunSimulation(grid, 10);
+    // DEBUG 
+    cout << "Begin RunSimulation from main" << endl;
+    simulation.RunSimulation(grid, 2); // Change back to 10 (generations) on final
 
     return 0;
 }
