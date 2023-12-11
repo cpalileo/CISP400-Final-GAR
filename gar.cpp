@@ -12,51 +12,61 @@ struct FitnessData {
 class Grid {
 private:
     // Sets up 2D array
-    int GridArray[10][10];
+    int GridArray[12][12];
 
 public:
     // Constructor to initialize all spaces to blank
     Grid(){
-        for (int i = 0; i < 10; ++i) {
-            for (int j = 0; j < 10; ++j) {
+
+        // Inititialize the map (Blank = 0)
+        for (int i = 0; i < 12; ++i) {
+            for (int j = 0; j < 12; ++j) {
                 GridArray[i][j] = 0;
             }
+        }
+
+        // Add the boarder to the map (Wall/Object = 3)
+        for (int i = 0; i < 12; ++i) {
+            GridArray[i][0] = 3; // Western wall
+            GridArray[i][11] = 3; // Eastern wall
+            GridArray[0][i] = 3; // Northern wall
+            GridArray[11][i] = 3; // Southern wall
         }
     }
 
     // Optional Task: Place obstacles around map
-    void InitializeObjects(int numObjects) {
-        srand(static_cast<unsigned int>(time(0)));
+    // void InitializeObjects(int numObjects) {
+    //     srand(static_cast<unsigned int>(time(0)));
 
-        for (int i = 0; i < numObjects; ++i) {
-            int x, y;
+    //     for (int i = 0; i < numObjects; ++i) {
+    //         int x, y;
 
-            do {
-                x = rand() % 10;
-                y = rand() % 10;
-            } while (GridArray[x][y] != 0 && IsAdjacent(x, y, 3));
+    //         do {
+    //             x = rand() % 10;
+    //             y = rand() % 10;
+    //         } while (GridArray[x][y] != 0 && IsAdjacent(x, y, 3));
 
-            GridArray[x][y] = 3;  // Object/Wall is placed in the cell
-        }
-    }
+    //         GridArray[x][y] = 3;  // Object/Wall is placed in the cell
+    //     }
+    // }
 
 
     // Check adjacent cel other objects to prevent possible robot encapsulation
-    bool IsAdjacent(int x, int y, int valueToCheck) const {
-        for (int i = -1; i <= 1; ++i) {
-            for (int j = -1; j <= 1; ++j) {
-                if (i == 0 && j == 0) continue; // Skip the current cell
+    // bool IsAdjacent(int x, int y, int valueToCheck) const {
+    //     for (int i = -1; i <= 1; ++i) {
+    //         for (int j = -1; j <= 1; ++j) {
+    //             if (i == 0 && j == 0) continue; // Skip the current cell
 
-                int newX = x + i;
-                int newY = y + j;
+    //             int newX = x + i;
+    //             int newY = y + j;
 
-                if (newX >= 0 && newX < 10 && newY >= 0 && newY < 10 && GridArray[newX][newY] == valueToCheck) {
-                    return true; // Adjacent cell has the specified value
-                }
-            }
-        }
-        return false;
-    }
+    //             if (newX >= 0 && newX < 10 && newY >= 0 && newY < 10 && GridArray[newX][newY] == valueToCheck) {
+    //                 return true; // Adjacent cell has the specified value
+    //             }
+    //         }
+    //     }
+    //     return false;
+    // }
 
     void InitializeRobots() {
         srand(static_cast<unsigned int>(time(0)));
@@ -144,8 +154,7 @@ public:
 
 class Robot {
 private:
-    // enum SensorStrength {NORMAL, DOUBLE}; // Meaning: Normal - Senors sees 1 space all around, DOUBLE - Sensors sees 2 spaces all around
-    enum SensorReading {CLEAR, OBJECT, BATTERY, IGNORE};
+    enum SensorReading { CLEAR = 0, OBJECT = 1, BATTERY = 2, IGNORE = 3 };    
     enum Movement {NORTH, SOUTH, EAST, WEST, RANDOM};
     int x;
     int y;
@@ -154,22 +163,11 @@ private:
     int TurnsSurvived;
     int TotalEnergyHarvested = 0;
     Movement decisionDirection;
-
-    // struct Gene {
-    //     SensorReading sensorReading;
-    //     SensorReading nextSensorReading;
-    //     Movement direction;
-    // };
     
-// TEST CASE
-struct Gene {
-    SensorReading sensorReading;
-    SensorReading nextSensorReading;
-    Movement direction;
-    float randomnessFactor; // New gene trait for randomness
-};
-
-
+    struct Gene {
+        int states[4]; // Represents N, S, E, W states. For example: {1, 0, 2, 1}
+        Movement action; // Represents the action to take when the above state is observed
+    };
 
     struct SensorData {
         SensorReading north;
@@ -179,67 +177,53 @@ struct Gene {
     };
 
     Gene genes[16];
-    int currentPosition;
+    SensorData currentSensorData;
     int energy;
-    int currentGeneIndex; 
+    int totalEnergyHarvested;
+    int turnsSurvived;
 
 public:
-    Robot(){
-        x = rand() % 10;
-        y = rand() % 10;
+    Robot() : x(rand() % 10), y(rand() % 10), energy(5), totalEnergyHarvested(0), turnsSurvived(0) {
+        // Initialize genes with random states and actions
         for (int i = 0; i < 16; ++i) {
-            genes[i].sensorReading = static_cast<SensorReading>(rand() % 4);
-            genes[i].nextSensorReading = static_cast<SensorReading>(rand() % 4);
-
-            // Generate a random value between 0 and 4 (inclusive) for direction, including RANDOM
-            int directionIndex = std::rand() % 5;
-            genes[i].direction = static_cast<Movement>(directionIndex);
-
-            // TEST CASE
-            genes[i].randomnessFactor = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            for (int j = 0; j < 4; ++j) {
+                genes[i].states[j] = rand() % 3; // States can be 0, 1, or 2
+            }
+            genes[i].action = static_cast<Movement>(rand() % 5); // Actions can be NORTH, SOUTH, EAST, WEST, or RANDOM
         }
-
-        currentPosition = rand() % 10;
-        energy = 5;
-        currentGeneIndex = 0;
     }
 
-    SensorData currentSensorData;
 
-    // Method to update sensors based on the grid
-void UpdateSensors(const Grid& grid) {
-    currentSensorData.north = static_cast<SensorReading>(grid.GetContent(x, y + 1));
-    currentSensorData.south = static_cast<SensorReading>(grid.GetContent(x, y - 1));
-    currentSensorData.east = static_cast<SensorReading>(grid.GetContent(x + 1, y));
-    currentSensorData.west = static_cast<SensorReading>(grid.GetContent(x - 1, y));
-}
+    void UpdateSensors(const Grid& grid) {
 
+    }
 
     // Method to make decisions based on sensors and genes
     void MakeDecisions() {
-        // Check each direction and make a decision based on the gene's strategy
-        if (currentSensorData.north == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction; // Use gene's direction if sensor reading matches
-        } else if (currentSensorData.south == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction;
-        } else if (currentSensorData.east == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction;
-        } else if (currentSensorData.west == genes[currentGeneIndex].sensorReading) {
-            decisionDirection = genes[currentGeneIndex].direction;
-        } else {
-            // If no sensor data matches the current gene, choose a random direction
+        // Convert sensor readings to a comparable form
+        int sensorStates[4] = {
+            currentSensorData.north == BATTERY ? 2 : (currentSensorData.north == OBJECT ? 1 : 0),
+            currentSensorData.east == BATTERY ? 2 : (currentSensorData.east == OBJECT ? 1 : 0),
+            currentSensorData.south == BATTERY ? 2 : (currentSensorData.south == OBJECT ? 1 : 0),
+            currentSensorData.west == BATTERY ? 2 : (currentSensorData.west == OBJECT ? 1 : 0),
+        };
+
+        bool decisionMade = false;
+        for (int i = 0; i < 16; ++i) {
+            if (std::equal(std::begin(genes[i].states), std::end(genes[i].states), std::begin(sensorStates))) {
+                decisionDirection = genes[i].action;
+                decisionMade = true;
+                break;
+            }
+        }
+
+        if (!decisionMade) {
+            // If no gene matches, choose a random direction
             decisionDirection = static_cast<Movement>(rand() % 4);
         }
-
-        // TEST CASE
-        float randomValue = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-        if (randomValue < genes[currentGeneIndex].randomnessFactor) {
-            decisionDirection = static_cast<Movement>(rand() % 5); // Includes RANDOM direction
-        }
-
-        // Increment the gene index for the next decision
-        currentGeneIndex = (currentGeneIndex + 1) % 16; 
     }
+
+
 
 
 
@@ -378,7 +362,7 @@ public:
 
 int main() {
     Grid grid;
-    grid.InitializeObjects(20);
+    // grid.InitializeObjects(20);
     grid.InitializeRobots();
     grid.InitializeBatteries(40);
 
