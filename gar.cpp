@@ -52,13 +52,27 @@ public:
     }
 
 
-    // Method to get the content of a cell
-    GridState GetCellContent(int x, int y) {
+    struct CellInfo {
+        GridState content;
+        bool isEdge;
+        bool isCorner;
+        // Other relevant details...
+    };
+
+    // BUILD UPON LATER POSSIBLY FOR SCANNING AND SUCH
+    CellInfo QueryCell(int x, int y) {
+        CellInfo info;
         if (x >= 0 && x < 12 && y >= 0 && y < 12) {
-            return GridArray[x][y];
+            info.content = GridArray[x][y];
+            info.isEdge = (x == 0 || x == 11 || y == 0 || y == 11);
+            info.isCorner = ((x == 0 || x == 11) && (y == 0 || y == 11));
+            // Add more logic as needed...
+        } else {
+            info.content = WALL;  // For out-of-bounds
         }
-        return WALL;  // Return wall for out-of-bounds
+        return info;
     }
+
 
 
     void PlaceRobot() {
@@ -102,7 +116,9 @@ public:
         }
     }
 
+
 };
+
 
 
 
