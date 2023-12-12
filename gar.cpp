@@ -7,6 +7,7 @@ using namespace std;
 enum GridReading { EMPTY = 0, ROBOT = 'R', BATTERY = 'B', WALL = 'W' };
 
 class Robot;
+class Genes;
 
 class Grid {
 private:
@@ -135,6 +136,88 @@ public:
 };
 
 
+class Genes {
+private:
+    // Define the Gene structure as an array of 5 integers
+    // First 4 integers for the states (N, E, S, W) and the last one for the action
+    struct Gene {
+        int data[5]; // 4 states and 1 action
+    };
+
+    // Array to store 16 genes
+    Gene genes[16];
+
+public:
+    // Constructor to initialize the genes with random values
+    Genes() {
+        for (int i = 0; i < 16; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                // Randomly initialize the state values (0, 1, or 2)
+                genes[i].data[j] = rand() % 3;
+            }
+            // Randomly initialize the action (represented as integers 0-3 corresponding to N, E, S, W)
+            genes[i].data[4] = rand() % 4;
+        }
+    }
+
+    // Method to get the action for a gene
+    char GetAction(int geneIndex) const {
+        if (geneIndex < 0 || geneIndex >= 16) {
+            return 'N'; // Default action
+        }
+        int actionCode = genes[geneIndex].data[4];
+        switch (actionCode) {
+            case 0: return 'N';
+            case 1: return 'E';
+            case 2: return 'S';
+            case 3: return 'W';
+            default: return 'N';
+        }
+    }
+
+    // Method to find the best matching gene based on current sensor readings
+    int ChooseBestGene(int N, int E, int S, int W) const {
+        int bestMatchIndex = 16; // Default to gene 16 if no match is found
+        int bestMatchScore = -1;
+
+        for (int i = 0; i < 16; ++i) {
+            int score = 0;
+            if (genes[i].data[0] == N) score++;
+            if (genes[i].data[1] == E) score++;
+            if (genes[i].data[2] == S) score++;
+            if (genes[i].data[3] == W) score++;
+
+            if (score > bestMatchScore) {
+                bestMatchScore = score;
+                bestMatchIndex = i;
+            }
+        }
+
+        return bestMatchIndex;
+    }
+
+    void printGenes() const {
+        cout << setw(10) << "Gene" << setw(10) << "N" << setw(10) << "E" << setw(10) << "S" << setw(10) << "W" << setw(10) << "Action" << endl;
+        for (int i = 0; i < 16; ++i) {
+            cout << setw(10) << i;  // Gene number
+            for (int j = 0; j < 4; ++j) {
+                cout << setw(10) << genes[i].data[j];  // State values
+            }
+            // Print action
+            char action;
+            switch (genes[i].data[4]) {
+                case 0: action = 'N'; break;
+                case 1: action = 'E'; break;
+                case 2: action = 'S'; break;
+                case 3: action = 'W'; break;
+                default: action = '?'; break; // In case of an unexpected value
+            }
+            cout << setw(10) << action << endl;
+        }
+    }
+};
+
+
 class Robot {
 private:
     int x, y; // Position
@@ -155,6 +238,7 @@ private:
     }
 
 public:
+Genes genes;
     // Initialize sensors to default values
     Robot() : x(0), y(0), energy(5) {
         sensors.north = EMPTY;
@@ -200,9 +284,6 @@ public:
         }
     }
 
-    void MakeDecision() {
-        // Logic for making decisions based on sensor readings.
-    }
 
     void MoveNorth(Grid& grid) {
         if (y > 0 && grid.QueryCell(x, y - 1) != WALL) {
@@ -232,6 +313,58 @@ public:
         }
     }
 
+
+    void MakeDecision(Grid& grid) {
+        UpdateSensors(grid);
+
+        // Retrieve sensor readings
+        int N, E, S, W;
+
+        if (sensors.north == BATTERY) {
+            N = 2;
+        } else if (sensors.north == EMPTY) {
+            N = 1;
+        } else {
+            N = 0;
+        }
+
+        if (sensors.east == BATTERY) {
+            E = 2;
+        } else if (sensors.east == EMPTY) {
+            E = 1;
+        } else {
+            E = 0;
+        }
+
+        if (sensors.south == BATTERY) {
+            S = 2;
+        } else if (sensors.south == EMPTY) {
+            S = 1;
+        } else {
+            S = 0;
+        }
+
+        if (sensors.west == BATTERY) {
+            W = 2;
+        } else if (sensors.west == EMPTY) {
+            W = 1;
+        } else {
+            W = 0;
+        }
+
+
+        int bestGeneIndex = genes.ChooseBestGene(N, E, S, W);
+        char action = genes.GetAction(bestGeneIndex);
+
+        switch (action) {
+            case 'N': MoveNorth(grid); break;
+            case 'E': MoveEast(grid); break;
+            case 'S': MoveSouth(grid); break;
+            case 'W': MoveWest(grid); break;
+        }
+    }
+
+
     void GridReporting(const Grid& grid);
     // ... additional methods ...
 
@@ -257,8 +390,8 @@ public:
         energy --;
     }
 
-
 };
+
 
 void Robot::GridReporting(const Grid& grid) {
     // Print initial position
@@ -294,7 +427,12 @@ void TestEnclosedRobot() {
     robot.UpdateSensors(grid);
     robot.GridReporting(grid);
 
-    // Additional checks can be performed here
+    // Simulate the robot trying to move in all directions
+    robot.MoveNorth(grid);
+    robot.MoveSouth(grid);
+    robot.MoveEast(grid);
+    robot.MoveWest(grid);
+    robot.GridReporting(grid);
 }
 
 
@@ -321,7 +459,18 @@ void TestOpenFieldWithBatteries() {
         robot.GridReporting(grid);
     }
 
-    // Additional checks can be performed here
+    // Simulate robot movement for multiple steps
+    for (int step = 0; step < 5; ++step) {
+        int direction = rand() % 4;  // Random direction
+        switch (direction) {
+            case 0: robot.MoveNorth(grid); break;
+            case 1: robot.MoveSouth(grid); break;
+            case 2: robot.MoveEast(grid); break;
+            case 3: robot.MoveWest(grid); break;
+        }
+        robot.UpdateSensors(grid);
+        robot.GridReporting(grid);
+    }
 }
 
 
@@ -340,7 +489,8 @@ void TestBatteryCollection() {
     robot.UpdateSensors(grid);
     robot.GridReporting(grid);
 
-    // Additional assertions can be added here
+    robot.MoveNorth(grid);  // Move towards the battery
+    robot.GridReporting(grid);
 }
 
 
@@ -356,7 +506,9 @@ void TestWallAvoidance() {
     robot.UpdateSensors(grid);
     robot.GridReporting(grid);
 
-    // Additional assertions can be added here
+    // Simulate the robot trying to move into the wall
+    robot.MoveNorth(grid);  // North is a wall
+    robot.GridReporting(grid);
 }
 
 
@@ -379,6 +531,10 @@ void TestRandomMovement() {
         robot.UpdateSensors(grid);
         robot.GridReporting(grid);
     }
+    for (int i = 0; i < 10; ++i) {
+        robot.MoveRandom(grid);  // Random movement
+        robot.GridReporting(grid);
+    }
 }
 
 
@@ -397,7 +553,10 @@ void TestEnergyDepletion() {
         robot.GridReporting(grid);
     }
 
-    // Additional assertions here
+    while (robot.GetEnergy() > 0) {
+        robot.MoveRandom(grid);  // Random movement with energy depletion
+        robot.GridReporting(grid);
+    }
 }
 
 
@@ -414,7 +573,9 @@ void TestGridBoundaries() {
     robot.UpdateSensors(grid);
     robot.GridReporting(grid);
 
-    // Additional assertions here
+    robot.MoveEast(grid);  // East is a wall
+    robot.MoveSouth(grid);  // South is a wall
+    robot.GridReporting(grid);
 }
 
 void PressEnterToContinue() {
@@ -426,40 +587,30 @@ int main() {
     srand(static_cast<unsigned int>(time(0)));
     Grid grid;
     Robot robot;
+    Genes genes;
 
     // Test scenarios
     TestEnclosedRobot();
     cout << "TestEnclosedRobot()\n" << endl;
-        PressEnterToContinue();
-
     TestOpenFieldWithBatteries();
-        cout << "TestOpenFieldWithBatteries()\n" << endl;
-        PressEnterToContinue();
-
+    cout << "TestOpenFieldWithBatteries()\n" << endl;
     TestBatteryCollection();
-            cout << "TestBatteryCollection()\n" << endl;
-        PressEnterToContinue();
-
+    cout << "TestBatteryCollection()\n" << endl;
     TestWallAvoidance();
-            cout << "TestWallAvoidance()\n" << endl;
-        PressEnterToContinue();
-
+    cout << "TestWallAvoidance()\n" << endl;
     TestRandomMovement();
-            cout << "TestRandomMovement()\n" << endl;
-        PressEnterToContinue();
-
+    cout << "TestRandomMovement()\n" << endl;
     TestEnergyDepletion();
-            cout << "TestEnergyDepletion()\n" << endl;
-        PressEnterToContinue();
-
+    cout << "TestEnergyDepletion()\n" << endl;
     TestGridBoundaries();
-            cout << "TestGridBoundries()\n" << endl;
-        PressEnterToContinue();
-
+    cout << "TestGridBoundries()\n" << endl;
 
     // Further testing and implementation...
     robot.GridReporting(grid);
     cout<< "GridReporting\n" << endl;
+
+    genes.printGenes();
+    cout << "PrintGenes\n" << endl;
 
     return 0;
 }
