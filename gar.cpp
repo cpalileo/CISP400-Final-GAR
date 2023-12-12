@@ -221,7 +221,9 @@ public:
 class Robot {
 private:
     int x, y; // Position
+    int initialX, initialY; // Robot starting position
     int energy; // Energy level
+    int batteriesCollected; // Running count of batteries collected
     struct SensorReadings {
         GridReading north;
         GridReading south;
@@ -229,10 +231,11 @@ private:
         GridReading west;
     } sensors;
 
+    // Method to handle interaction with a grid cell (like collecting a battery)
     void InteractWithGridCell(Grid& grid, int x, int y) {
         GridReading cellContent = grid.QueryCell(x, y);
         if (cellContent == BATTERY) {
-            energy += 5; 
+            energy += 5; // Gain energy for battery
             grid.RemoveBattery(x, y);
         }
     }
@@ -240,7 +243,7 @@ private:
 public:
 Genes genes;
     // Initialize sensors to default values
-    Robot() : x(0), y(0), energy(5) {
+    Robot() : x(0), y(0), initialX(0), initialY(0), energy(5), batteriesCollected(0) {
         sensors.north = EMPTY;
         sensors.south = EMPTY;
         sensors.east = EMPTY;
@@ -250,6 +253,8 @@ Genes genes;
     void SetPosition(int newX, int newY) {
         x = newX;
         y = newY;
+        initialX = newX; // Set intitial position
+        initialY = newY; 
     }
 
     void UpdateSensors(const Grid& grid) {
@@ -290,6 +295,7 @@ Genes genes;
             y--;
             InteractWithGridCell(grid, x, y);
         }
+        energy --;
     }
 
     void MoveSouth(Grid& grid) {
@@ -297,6 +303,7 @@ Genes genes;
             y++;
             InteractWithGridCell(grid, x, y);
         }
+        energy --;
     }
 
     void MoveEast(Grid& grid) {
@@ -304,6 +311,7 @@ Genes genes;
             x++;
             InteractWithGridCell(grid, x, y);
         }
+        energy --;
     }
 
     void MoveWest(Grid& grid) {
@@ -311,6 +319,7 @@ Genes genes;
             x--;
             InteractWithGridCell(grid, x, y);
         }
+        energy --;
     }
 
 
@@ -364,6 +373,21 @@ Genes genes;
         }
     }
 
+    void generateReport(int turns) const {
+        cout << "Robot Performance Report:" << endl;
+        cout << "Starting Position: (" << initialX << ", " << initialY << ")" << endl;
+        cout << "Ending Position: (" << x << ", " << y << ")" << endl;
+        cout << "Turns before death: " << turns << endl;
+        cout << "Batteries Collected: " << batteriesCollected << endl;
+    }
+
+    void run(Grid &grid) {
+        while (energy > 0) {
+            MakeDecision(grid); // This should include moving and interacting with the grid
+            // ... other logic as needed ...
+        }
+        generateReport();
+    }
 
     void GridReporting(const Grid& grid);
     // ... additional methods ...
