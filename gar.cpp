@@ -2,8 +2,10 @@
 #include<iomanip>
 #include<cstdlib>
 #include<ctime>
+#include<string>
 using namespace std;
 
+void PressEnterToContinue(); // TEMP PROTOTYPE
 
 struct FitnessData {
     double averageFitness;
@@ -36,18 +38,18 @@ public:
 
     // Optional Task: Place obstacles around map
     // void InitializeObjects(int numObjects) {
-    //     srand(static_cast<unsigned int>(time(0)));
+        // srand(static_cast<unsigned int>(time(0)));
 
-    //     for (int i = 0; i < numObjects; ++i) {
-    //         int x, y;
+        // for (int i = 0; i < numObjects; ++i) {
+        //     int x, y;
 
-    //         do {
-    //             x = rand() % 10;
-    //             y = rand() % 10;
-    //         } while (GridArray[x][y] != 0 && IsAdjacent(x, y, 3));
+        //     do {
+        //         x = rand() % 10 + 1; // Add 1 to avoid placing on the border
+        //         y = rand() % 10 + 1; // Add 1 for the same reason
+        //     } while (GridArray[x][y] != 0 && IsAdjacent(x, y, 3));
 
-    //         GridArray[x][y] = 3;  // Object/Wall is placed in the cell
-    //     }
+        //     GridArray[x][y] = 3; // Object/Wall is placed in the cell
+        // }
     // }
 
 
@@ -74,8 +76,8 @@ public:
 
         // Find an empty cell
         do {
-            x = rand() % 10;
-            y = rand() % 10;
+            x = rand() % 10 + 1;
+            y = rand() % 10 + 1;
         } while (GridArray[x][y] != 0);  // Ensure the cell is empty
 
         GridArray[x][y] = 1;  // Place the robot in the empty cell
@@ -88,8 +90,8 @@ public:
         for (int i = 0; i < numBatteries; i++) {
         // Find an empty cell
             do {
-                x = rand() % 10;
-                y = rand() % 10;
+                x = rand() % 10 + 1;
+                y = rand() % 10 + 1;
             } while (GridArray[x][y] != 0);  // Ensure the cell is empty
 
             GridArray[x][y] = 2;  // Place the robot in the empty cell
@@ -100,12 +102,32 @@ public:
         srand(static_cast<unsigned int>(time(0)));
         int x, y;
         do {
-            x = rand() % 10;
-            y = rand() % 10;
+            x = rand() % 10 + 1;
+            y = rand() % 10 + 1;
         } while (GridArray[x][y] != 0);
 
         GridArray[x][y] = 1;  // Place robot in cell
     }
+
+    // Prints the map to see current state
+    void PrintGrid() const {
+        cout << "Current Map State:" << endl;
+        cout << "    "; // Space for row numbers
+        for (int j = 1; j <= 12; ++j) {
+            cout << setw(2) << j << " "; // Column numbers
+        }
+        cout << endl;
+
+        for (int i = 0; i < 12; ++i) {
+            cout << setw(2) << (i + 1) << " "; // Row number
+            for (int j = 0; j < 12; ++j) {
+                cout << setw(2) << GridArray[i][j] << " ";
+            }
+            cout << endl;
+        }
+        PressEnterToContinue(); //PAUSE
+    }
+
 
 // TEST CASE
 // void PlaceRobot() {
@@ -125,30 +147,30 @@ public:
 // }
 
 
-    void RemoveRobot(int x, int y) {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
-            GridArray[x][y] = 0;
-        }
-    }
-
     int GetContent(int x, int y) const {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
+        if (x >= 1 && x <= 10 && y >= 1 && y <= 10) {
             return GridArray[x][y];
         } else {
             // Return a value indicating an out-of-bounds cell
             return -1;
-            }
-    }
-
-
-    // In the Grid class:
-    void ConsumeBattery(int x, int y) {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
-            GridArray[x][y] = 0; // Remove the battery from the grid
-        //DEBUG
-        cout << "Battery consumed at: (" << x << ", " << y << ")" << endl;
         }
     }
+
+
+    void RemoveRobot(int x, int y) {
+        if (x >= 1 && x <= 10 && y >= 1 && y <= 10) {
+            GridArray[x][y] = 0;
+        }
+    }
+
+    void ConsumeBattery(int x, int y) {
+        if (x >= 1 && x <= 10 && y >= 1 && y <= 10) {
+            GridArray[x][y] = 0; // Remove the battery from the grid
+            //DEBUG
+            cout << "Battery consumed at: (" << x << ", " << y << ")" << endl;
+        }
+    }
+
 };
 
 
@@ -183,7 +205,7 @@ private:
     int turnsSurvived;
 
 public:
-    Robot() : x(rand() % 10), y(rand() % 10), energy(5), totalEnergyHarvested(0), turnsSurvived(0) {
+    Robot() : x(rand() % 10 + 1), y(rand() % 10 + 1), energy(5), totalEnergyHarvested(0), turnsSurvived(0) {
         // Initialize genes with random states and actions
         for (int i = 0; i < 16; ++i) {
             for (int j = 0; j < 4; ++j) {
@@ -194,9 +216,49 @@ public:
     }
 
 
-    void UpdateSensors(const Grid& grid) {
+void UpdateSensors(const Grid& grid) {
+    // Adjust for the wall border in the grid
+    int adjustedX = x + 1;
+    int adjustedY = y + 1;
 
+    // Check North (y - 1)
+    if (adjustedY - 1 >= 1) {
+        currentSensorData.north = static_cast<SensorReading>(grid.GetContent(adjustedX, adjustedY - 1));
+    } else {
+        currentSensorData.north = OBJECT; // Wall or out of bounds
     }
+
+    // Check South (y + 1)
+    if (adjustedY + 1 <= 10) {
+        currentSensorData.south = static_cast<SensorReading>(grid.GetContent(adjustedX, adjustedY + 1));
+    } else {
+        currentSensorData.south = OBJECT; // Wall or out of bounds
+    }
+
+    // Check East (x + 1)
+    if (adjustedX + 1 <= 10) {
+        currentSensorData.east = static_cast<SensorReading>(grid.GetContent(adjustedX + 1, adjustedY));
+    } else {
+        currentSensorData.east = OBJECT; // Wall or out of bounds
+    }
+
+    // Check West (x - 1)
+    if (adjustedX - 1 >= 1) {
+        currentSensorData.west = static_cast<SensorReading>(grid.GetContent(adjustedX - 1, adjustedY));
+    } else {
+        currentSensorData.west = OBJECT; // Wall or out of bounds
+    }
+
+    //DEBUG
+    cout << "DEBUG - Robot Coordinates: (" << x << ", " << y << ")" << endl;
+    cout << "DEBUG - Current Sensor Readings: " << endl;
+    cout << "North: " << currentSensorData.north 
+     << ", South: " << currentSensorData.south 
+     << ", East: " << currentSensorData.east 
+     << ", West: " << currentSensorData.west << endl;
+     PressEnterToContinue(); //PAUSE
+}
+
 
     // Method to make decisions based on sensors and genes
     void MakeDecisions() {
@@ -365,9 +427,16 @@ int main() {
     // grid.InitializeObjects(20);
     grid.InitializeRobots();
     grid.InitializeBatteries(40);
+    grid.PrintGrid(); //Print Grid to see status
 
     Simulation simulation;
     simulation.RunSimulation(grid, 10);
 
     return 0;
+}
+
+void PressEnterToContinue(){
+    std::cout << "Press Enter to Continue";
+    std::string temp;
+    std::getline(std::cin, temp);
 }
