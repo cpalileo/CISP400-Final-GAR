@@ -1,336 +1,408 @@
-#include<iostream>
-#include<iomanip>
-#include<cstdlib>
-#include<ctime>
+#include <iostream>
+#include <iomanip>
+#include <cstdlib>
+#include <ctime>
+#include <cstdlib> // For rand()
 using namespace std;
-
 
 class Grid {
 private:
-    // Sets up 2D array
-    int GridArray[10][10];
+    static const int GRID_SIZE = 10; // Constant for grid size
+    char grid[GRID_SIZE][GRID_SIZE]; // 2D array representing the grid
+    int numBatteries;
+    bool robotPlaced;
+    int roboGridX; // X coordinate of robot
+    int roboGridY; // Y coordinate of robot
+
+    void initializeGrid() {
+        cout << "Initializing grid cells to empty..." << endl;
+        for (int row = 0; row < GRID_SIZE; ++row) {
+            for (int col = 0; col < GRID_SIZE; ++col) {
+                grid[row][col] = ' ';
+            }
+        }
+    cout << "Grid cells initialized." << endl;
+    }
 
 public:
-    // Constructor to initialize all spaces to blank
-    Grid(){
-        for (int i = 0; i < 10; ++i) {
-            for (int j = 0; j < 10; ++j) {
-                GridArray[i][j] = 0;
+    Grid(int batteryCount = 40) : numBatteries(batteryCount), robotPlaced(false), roboGridX(0), roboGridY(0) {
+        cout << "Initializing Grid..." << endl;
+        initializeGrid();
+        cout << "Distributing Batteries..." << endl;
+        distributeBatteries();
+        cout << "Adding Robot..." << endl;
+        addRobot();
+        cout << "Grid Initialization Complete." << endl;
+    }
+
+
+    void distributeBatteries() {
+    cout << "Placing batteries on the grid..." << endl;
+        int placedBatteries = 0;
+        while (placedBatteries < numBatteries) {
+            int x = rand() % GRID_SIZE;
+            int y = rand() % GRID_SIZE;
+
+            if (grid[x][y] != 'B') {
+                grid[x][y] = 'B';
+                ++placedBatteries;
             }
         }
+    cout << "Batteries placed: " << placedBatteries << endl;
     }
 
-    // Optional Task: Place obstacles around map
-    void InitializeObjects(int numObjects) {
-        srand(static_cast<unsigned int>(time(0)));
+    void addRobot() {
+    cout << "Placing robot on the grid..." << endl;
+        if (robotPlaced) return;
 
-        for (int i = 0; i < numObjects; ++i) {
-            int x, y;
+        do {
+            roboGridX = rand() % GRID_SIZE;
+            roboGridY = rand() % GRID_SIZE;
+        } while (grid[roboGridX][roboGridY] == 'B');
 
-            do {
-                x = rand() % 10;
-                y = rand() % 10;
-            } while (GridArray[x][y] != 0 && AdjacentObject(x, y));
-
-            GridArray[x][y] = 1;  // Random Object is placed in cel
-        }
+        robotPlaced = true;
+    cout << "Robot placed at X: " << roboGridX << ", Y: " << roboGridY << endl;
     }
 
-    // Check adjacent cel other objects to prevent possible robot encapsulation
-    bool AdjacentObject(int x, int y) const {
-        for (int i = -1; i <= 1; ++i) {
-            for (int j = -1; j <= 1; ++j) {
-                int newX = x + i;
-                int newY = y + j;
-
-                // Check if cel is within map walls and contains object
-                if (newX >= 0 && newX < 10 && newY >= 0 && newY < 10 && GridArray[newX][newY] == 1) {
-                    return true;  // Object has an adjacent object
+    void displayGrid() const {
+    cout << "Displaying grid:" << endl;
+        for (int row = 0; row < GRID_SIZE; ++row) {
+            for (int col = 0; col < GRID_SIZE; ++col) {
+                if (row == roboGridY && col == roboGridX) {
+                    cout << 'R' << ' ';
+                } else {
+                    cout << grid[row][col] << ' ';
                 }
             }
+            cout << endl;
         }
-
-        return false;  // Object not adjacent to another object
+    cout << "Grid displayed." << endl;
     }
 
-
-    void InitializeRobots(int numBots) {
-        srand(static_cast<unsigned int>(time(0)));
-
-        for (int i = 0; i < numBots; ++i) {
-            int x, y;
-
-            do {
-                x = rand() % 10;
-                y = rand() % 10;
-            } while (GridArray[x][y] != 0);
-
-            GridArray[x][y] = 1;
-        }
-    }
-
-    void InitializeBatteries(int numBatteries){
-        srand(static_cast<unsigned int>(time(0)));
-
-        for (int i = 0; i < numBatteries; ++i){
-            int x = rand() % 10;
-            int y = rand() % 10;
-            if (GridArray[x][y] == 0){
-                GridArray[x][y] = 2; // Battery placed in cel if empty
-            } else {
-                --i; // Places battery in other cel if space is occupied
-            }
-        }
-    }
-
-    int GetContent(int x, int y) const {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
-            return GridArray[x][y];
-        } else {
-            // Return a value indicating an out-of-bounds cell
-            return -1;
-        }
-    }
+    int getRoboGridX() const { return roboGridX; }
+    int getRoboGridY() const { return roboGridY; }
 };
 
+class Genes {
+private:
+    static const int NUM_STATES = 4;
+    int states[NUM_STATES]; // Array to store gene states
+    char direction; // Direction associated with these states
+
+    // Private method to randomly set direction
+    void setRandomDirection() {
+        cout << "Setting random direction..." << endl;
+        int directionCode = rand() % NUM_STATES;
+        switch (directionCode) {
+        case 0: direction = 'N'; break;
+        case 1: direction = 'E'; break;
+        case 2: direction = 'S'; break;
+        case 3: direction = 'W'; break;
+        default: direction = 'N'; break;
+        }
+        cout << "Random direction set to: " << direction << endl;
+    }
+
+
+public:
+    Genes() {
+        cout << "Initializing Genes..." << endl;
+        for (int i = 0; i < NUM_STATES; ++i) {
+            states[i] = rand() % 3;
+            cout << "State " << i << " set to: " << states[i] << endl;
+        }
+        setRandomDirection();
+        cout << "Direction set to: " << direction << endl;
+    }
+
+
+    // Method to mutate a specific state
+    void mutateState(int index) {
+        cout << "Mutating state at index: " << index << endl;
+        if (index >= 0 && index < NUM_STATES) {
+            states[index] = rand() % 3;
+        }
+        cout << "State " << index << " mutated to: " << states[index] << endl;
+    }
+
+
+    // Method to mutate a random state
+    void mutateRandomState() {
+        cout << "Mutating a random state..." << endl;
+        int index = rand() % NUM_STATES;
+        mutateState(index);
+        // Note: Detailed output will be printed from mutateState
+    }
+
+
+    // Method to mutate the direction
+    void mutateDirection() {
+        cout << "Mutating direction..." << endl;
+        setRandomDirection();
+        cout << "Direction mutated to: " << direction << endl;
+    }
+
+
+    // Getters
+    int getState(int index) const {
+        return (index >= 0 && index < NUM_STATES) ? states[index] : -1;
+    }
+
+    char getDirection() const { return direction; }
+};
 
 class Robot {
 private:
-    // enum SensorStrength {NORMAL, DOUBLE}; // Meaning: Normal - Senors sees 1 space all around, DOUBLE - Sensors sees 2 spaces all around
-    enum SensorReading {CLEAR, OBJECT, BATTERY, IGNORE};
-    enum Movement {NORTH, SOUTH, EAST, WEST, RANDOM};
-    int x;
-    int y;
-    int Position; // Holds the current location of the robot
-    int Energy;
-    int TotalEnergyHarvested;
-    int TurnsSurvived;
+    static const int MAX_ENERGY = 5;
+    static const int NUM_GENES = 16;
+    static const int BATTERY_ENERGY_INCREASE = 5;
 
-    struct Gene {
-        SensorReading sensorReading;
-        SensorReading nextSensorReading;
-        Movement direction;
-    };
-
-    Gene genes[16];
-    int currentPosition;
     int energy;
-    int currentGeneIndex;  // Added to keep track of the current gene being processed
+    int harvestedEnergy;
+    Genes genes[NUM_GENES];
+    Grid grid;
+
+    // Update the state of the robot based on its surrounding
+    void updateState() {
+        // Checking adjacent cells and updating N, E, S, W states
+        N = (roboGridY > 0 && grid[roboGridY - 1][roboGridX] != ' ') ? 1 : 0;
+        E = (roboGridX < 9 && grid[roboGridY][roboGridX + 1] != ' ') ? 1 : 0;
+        S = (roboGridY < 9 && grid[roboGridY + 1][roboGridX] != ' ') ? 1 : 0;
+        W = (roboGridX > 0 && grid[roboGridY][roboGridX - 1] != ' ') ? 1 : 0;
+    }
+
+
+    // Choose the best gene based on the robot's current state
+    int selectBestGene() {
+        updateState();
+        int bestGeneIndex = 0;
+        int bestScore = 0;
+
+        for (int i = 0; i < NUM_GENES; ++i) {
+            int score = calculateGeneScore(genes[i]); // Assume this function calculates the gene's score
+            if (score > bestScore) {
+                bestScore = score;
+                bestGeneIndex = i;
+            }
+        }
+
+        return bestGeneIndex;
+    }
+
+    // Move the robot based on the direction specified in the gene
+    void move(char direction) {
+        // Implementing movement logic based on direction
+        switch (direction) {
+            case 'N':
+                if (N != 0 && roboGridY > 0) roboGridY--;
+                break;
+            case 'E':
+                if (E != 0 && roboGridX < 9) roboGridX++;
+                break;
+            case 'S':
+                if (S != 0 && roboGridY < 9) roboGridY++;
+                break;
+            case 'W':
+                if (W != 0 && roboGridX > 0) roboGridX--;
+                break;
+        }
+        if (grid[roboGridY][roboGridX] == 'B') {
+            grid[roboGridY][roboGridX] = ' ';  // Remove battery after collecting
+            getHarvestedEnergy();            // Increase robot's energy
+        }
+    }
+
+
+    // Calculate the score for a gene
+    int calculateGeneScore(const Genes& gene) {
+        int score = 0;
+        char direction = gene.getDirection();
+        // Scoring based on the feasibility of the direction given the current state
+        if (direction == 'N' && N != 0) score++;
+        if (direction == 'E' && E != 0) score++;
+        if (direction == 'S' && S != 0) score++;
+        if (direction == 'W' && W != 0) score++;
+        return score;
+    }
+
 
 public:
-    Robot(){
-        // Initialize genes randomly
-        x = rand() % 10;
-        y = rand() % 10;
-        for (int i = 0; i < 16; ++i) {
-            genes[i].sensorReading = static_cast<SensorReading>(rand() % 4);
-            genes[i].nextSensorReading = static_cast<SensorReading>(rand() % 4);
-            genes[i].direction = static_cast<Movement>(rand() % 5);
-        }
-
-        // Initialize other properties
-        currentPosition = rand() % 10;
-        energy = 5;
-        currentGeneIndex = 0;  // Initialize currentGeneIndex to the first gene
+    Robot() : energy(MAX_ENERGY), harvestedEnergy(0), grid() {
+        // Initialize genes and other robot states
     }
 
-    // Method to update sensors based on the grid
-    void UpdateSensors(const Grid& grid) {
-        int northContent = grid.GetContent(x, y + 1);
-        if (northContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (northContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
-
-        int southContent = grid.GetContent(x, y - 1);
-        if (southContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (southContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
-
-        int eastContent = grid.GetContent(x + 1, y);
-        if (eastContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (eastContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
-
-        int westContent = grid.GetContent(x - 1, y);
-        if (westContent == 1) {
-            genes[currentGeneIndex].sensorReading = OBJECT;
-        } else if (westContent == 2) {
-            genes[currentGeneIndex].sensorReading = BATTERY;
-        } else {
-            genes[currentGeneIndex].sensorReading = CLEAR;
-        }
-
-    }
-
-    // Method to make decisions based on sensors and genes
-    void MakeDecisions() {
-        if (genes[currentGeneIndex].sensorReading == OBJECT) {
-            // Turn left
-            genes[currentGeneIndex].direction = static_cast<Movement>((genes[currentGeneIndex].direction - 1 + 4) % 4);
-        } else if (genes[currentGeneIndex].sensorReading == CLEAR) {
-            // Move forward
-            Move();
-        } else if (genes[currentGeneIndex].sensorReading == BATTERY) {
-            // Turn right
-            genes[currentGeneIndex].direction = static_cast<Movement>((genes[currentGeneIndex].direction + 1) % 4);
+    // Method to run the robot's routine
+    void run() {
+        while (energy > 0) {
+            int bestGeneIndex = selectBestGene();
+            move(genes[bestGeneIndex].getDirection());
+            // Additional logic for energy consumption or harvesting
         }
     }
 
-    // Method to move the robot and update position and energy
-    void Move() {
-        // Update x and y based on the direction
-        if (genes[currentGeneIndex].direction == NORTH && y < 9) {
-            y++;
-        } else if (genes[currentGeneIndex].direction == SOUTH && y > 0) {
-            y--;
-        } else if (genes[currentGeneIndex].direction == EAST && x < 9) {
-            x++;
-        } else if (genes[currentGeneIndex].direction == WEST && x > 0) {
-            x--;
-        }
-
-        energy -+ 1; // 1 energy depleted with every move
+    // Method to increase energy when a battery is harvested
+    void harvestBattery() {
+        energy += BATTERY_ENERGY_INCREASE;
+        harvestedEnergy++;
     }
 
-    // Method to handle energy depletion and restoration
-    void HandleEnergy(const Grid& grid) {
-        int cellContent = grid.GetContent(x, y);
-
-        if (cellContent == 2) {
-            // battery found
-            energy += 5;
-            TotalEnergyHarvested += 5;
-        }
-    }
-
-    void ResetEnergy() {
-        energy = 5;
-    }
-
-    int RunRound(const Grid& grid) {
-        ResetEnergy(); // Reset energy at the start of the round
-        int maxTurns = 500; // Example maximum turns limit
-
-        if (maxTurns > 499) {
-            cout << "ERROR" << endl;
-            return 0;
-        }
-
-        for (int turn = 0; turn < maxTurns && energy > 0; ++turn) {
-            UpdateSensors(grid);
-            MakeDecisions();
-            Move();
-            HandleEnergy(grid);
-            TurnsSurvived++;
-    // //Debugging
-    // std::cout << "Robot at (" << x << ", " << y << ") | Energy: " << energy << " | Total Harvested: " << TotalEnergyHarvested << " | Turns Survived: " << TurnsSurvived << std::endl;
-        }
-    }
-
-    int GetTotalEnergyHarvested() const {
-        return TotalEnergyHarvested;
-    }
-
-    int GetTurnsSurvived() const {
-        return TurnsSurvived;
-    }    
-
-    int GetEnergy() const {
-        return energy;
-    }
+    // Getters
+    int getHarvestedEnergy() const { return harvestedEnergy; }
 };
 
-
-class Simulation {
+class DynamicArray {
 private:
-    Robot robot;
-    Robot population[10];  // Array stores the robot population
-    int generation;
+    int* elements;
+    int capacity;
+    int size;
+
+    void resizeArray() {
+        int newCapacity = capacity * 2;
+        int* newArray = new int[newCapacity];
+
+        for (int i = 0; i < size; ++i) {
+            newArray[i] = elements[i];
+        }
+
+        delete[] elements;
+        elements = newArray;
+        capacity = newCapacity;
+    }
 
 public:
-    Simulation(int populationSize) : generation(0) {
-        // Initialize population with random robots
-        for (int i = 0; i < populationSize; ++i) {
-            population[i] = Robot();  // Add random robot to population
-        }
+    DynamicArray() : elements(new int[1]), capacity(1), size(0) {}
+
+    ~DynamicArray() {
+        delete[] elements;
     }
 
-
-    void GenerationStep(const Grid& grid) {
-        robot.UpdateSensors(grid);
-        robot.MakeDecisions();
-        robot.Move();
-        robot.HandleEnergy(grid);
-
-        for (int i = 0; i < 10; ++i) {
-            population[i].UpdateSensors(grid);
-            population[i].MakeDecisions();
-            population[i].Move();
-            population[i].HandleEnergy(grid);
+    void add(int value) {
+        if (size == capacity) {
+            resizeArray();
         }
+        elements[size++] = value;
     }
 
-    void RunSimulation(const Grid& grid, int numGenerations, int turnsPerGeneration) {
-        for (int gen = 0; gen < numGenerations; ++gen) {
-            RunGeneration(grid);
-            PrintGenerationStats();
+    void remove(int index) {
+        if (index < 0 || index >= size) {
+            cout << "Error: Invalid Index\n";
+            return;
         }
+
+        for (int i = index; i < size - 1; ++i) {
+            elements[i] = elements[i + 1];
+        }
+        size--;
     }
 
-    void RunGeneration(const Grid& grid) {
-        for (int i = 0; i < 10; ++i) {
-            population[i].RunRound(grid);
+    int getSize() const { return size; }
+
+    int& operator[](int index) {
+        if (index >= 0 && index < size) {
+            return elements[index];
         }
-        ++generation;
+        throw out_of_range("Index out of range");
     }
 
-
-    void PrintGenerationStats() const {
-        long long totalEnergyHarvested = 0;
-        long long totalTurns = 0;
-
-        for (int i = 0; i < 10; ++i) {
-            totalEnergyHarvested += population[i].GetTotalEnergyHarvested();
-            totalTurns += population[i].GetTurnsSurvived();
-        }
-
-        double averageFitness;
-        if (totalTurns == 0) {
-            averageFitness = 0.0;
-        } else {
-            averageFitness = static_cast<double>(totalEnergyHarvested) / totalTurns;
-        }
-
-        std::cout << "Generation: " << generation << "\n";
-        std::cout << std::fixed << std::setprecision(3);
-        std::cout << "Average Fitness: " << averageFitness << "\n";
-        std::cout << "------------------------\n";
-    }
-
-
+    // Additional methods like getArray, sort, max, min, etc., can be added here.
 };
 
+class Breeding {
+private:
+    static const int DEFAULT_POPULATION_SIZE = 200;
+    Robot* population;
+    int populationSize;
+
+    // Manual sorting of robots based on harvested energy
+    void rankPopulation() {
+        for (int i = 0; i < populationSize - 1; ++i) {
+            for (int j = i + 1; j < populationSize; ++j) {
+                if (population[i].getHarvestedEnergy() < population[j].getHarvestedEnergy()) {
+                    Robot temp = population[i];
+                    population[i] = population[j];
+                    population[j] = temp;
+                }
+            }
+        }
+    }
+
+    // Resize the population array while keeping the existing elements
+    void resizePopulation(int newSize) {
+        Robot* newPopulation = new Robot[newSize];
+        for (int i = 0; i < min(populationSize, newSize); ++i) {
+            newPopulation[i] = population[i];
+        }
+        delete[] population;
+        population = newPopulation;
+        populationSize = newSize;
+    }
+
+    double getAverageFitnessScore() {
+        double totalFitness = 0;
+        for (int i = 0; i < populationSize; ++i) {
+            totalFitness += population[i].getHarvestedEnergy();
+        }
+        return totalFitness / populationSize;
+    }
+
+public:
+    Breeding(int size = DEFAULT_POPULATION_SIZE) : populationSize(size) {
+        population = new Robot[populationSize];
+    }
+
+    ~Breeding() {
+        delete[] population;
+    }
+
+    // Run simulation for each robot
+    void runSimulation() {
+        for (int i = 0; i < populationSize; ++i) {
+            population[i].run();
+        }
+    }
+
+    // Perform natural selection to keep the fittest robots
+    void survivalFittest() {
+        rankPopulation();
+        resizePopulation(populationSize / 2);
+    }
+
+    // Additional methods like advanceTimes, displayFitnessScores, etc., can be added here.
+
+
+    void advanceTime(int numberOfGenerations, int displayInterval = 10) {
+        for (int gen = 0; gen < numberOfGenerations; ++gen) {
+            runSimulation(); // Run the simulation for each robot
+            survivalFittest(); // Perform natural selection
+
+            // Optionally display fitness scores at specified intervals
+            if (gen % displayInterval == 0) {
+                cout << "Generation " << gen << ": Average Fitness Score = " << getAverageFitnessScore() << endl;
+            }
+        }
+    }
+};
+
+void displayWelcomeMessage() {
+    cout << "Trials of Life: Artificial Life Edition" << endl;
+}
 
 int main() {
-    Grid grid;
-    grid.InitializeObjects(20);
-    grid.InitializeRobots(10);
-    grid.InitializeBatteries(40);
+    displayWelcomeMessage();
 
-    Simulation simulation(10);
-    simulation.RunSimulation(grid, 10, 200);
+    // Test creation of a Genes object
+    cout << "Creating a test Genes object..." << endl;
+    Genes testGenes;
+    cout << "Test Genes object created." << endl;
 
+    // Initialize the grid
+    cout << "Creating Grid..." << endl;
+    Grid grid; // Assuming default constructor
+
+    // Display the grid
+    cout << "Displaying the initial grid state:" << endl;
+    grid.displayGrid();
+
+    // Further code...
     return 0;
 }
