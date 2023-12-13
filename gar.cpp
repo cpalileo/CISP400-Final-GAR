@@ -10,12 +10,12 @@ enum GridReading { EMPTY, ROBOT, BATTERY, WALL};
 
 // Forward declarations
 class Robot;
-class Grid;
+class Genes;
 
 
 // Genes Class
 class Genes {
-public:
+private:
     // Define the GenePool structure as an array of 5 integers
     // First 4 integers for the states (N, E, S, W) and the last one for the action
     struct GenePool {
@@ -25,6 +25,7 @@ public:
     // Array to store 16 genes
     GenePool genes[16];
 
+public:
     // Constructor to initialize the genes with random values
     Genes() {
         for (int i = 0; i < 16; ++i) {
@@ -52,18 +53,29 @@ public:
         }
     }
 
-    // Method to find the best matching gene pool or return default action
+    // Method to find the best matching gene pool based on current sensor readings
     int ChooseBestGene(int N, int E, int S, int W) const {
-        int bestMatchIndex = -1; // -1 indicates no match found
-        int bestMatchScore = -1;
+        int bestMatchIndex = 0; // Assume the first gene pool is the best initially
+        int bestMatchScore = -1; // Start with a low score
 
-        for (int i = 0; i < 15; ++i) { // Check first 15 gene pools
+        for (int i = 0; i < 16; ++i) {
             int score = 0;
-            // Scoring for each direction
-            if (genes[i].data[0] == N) score += (N == 2) ? 2 : 1;
-            if (genes[i].data[1] == E) score += (E == 2) ? 2 : 1;
-            if (genes[i].data[2] == S) score += (S == 2) ? 2 : 1;
-            if (genes[i].data[3] == W) score += (W == 2) ? 2 : 1;
+            // Scoring for North
+            if (genes[i].data[0] == N) {
+                score += (N == 2) ? 2 : 1; // Higher score for battery
+            }
+            // Scoring for East
+            if (genes[i].data[1] == E) {
+                score += (E == 2) ? 2 : 1; // Higher score for battery
+            }
+            // Scoring for South
+            if (genes[i].data[2] == S) {
+                score += (S == 2) ? 2 : 1; // Higher score for battery
+            }
+            // Scoring for West
+            if (genes[i].data[3] == W) {
+                score += (W == 2) ? 2 : 1; // Higher score for battery
+            }
 
             if (score > bestMatchScore) {
                 bestMatchScore = score;
@@ -71,10 +83,8 @@ public:
             }
         }
 
-        // Return the index of the best matching gene or default gene pool index
-        return (bestMatchIndex != -1) ? bestMatchIndex : 15;
+        return bestMatchIndex;
     }
-
 
 
     void printGenes() const {
@@ -359,23 +369,6 @@ public:
         // Increase power if on a battery and remove the battery from the grid
     }
 
-    // Check if the movement based on gene pool is valid
-    bool IsValidMove(const Genes::GenePool& gene, const Grid& grid) const {
-        int actionCode = gene.data[4];
-        int nextX = x, nextY = y;
-
-        // Determine the next position based on the action
-        switch (actionCode) {
-            case 0: nextY--; break;
-            case 1: nextX++; break;
-            case 2: nextY++; break;
-            case 3: nextX--; break;
-            default: return false; // Invalid action code
-        }
-
-        // Check if the next position is within grid boundaries and not a wall
-        return nextX >= 0 && nextX < 12 && nextY >= 0 && nextY < 12 && grid.QueryCell(nextX, nextY) != WALL;
-    }
 
     // TEST MAKEDECISION METHOD
     void MakeDecision(Grid& grid) {
@@ -383,8 +376,10 @@ public:
         cout << "Current Sensor Readings: N=" << sensors.north << ", E=" << sensors.east 
             << ", S=" << sensors.south << ", W=" << sensors.west << endl;
 
-        // Update sensor readings based on the current position
         UpdateSensors(grid);
+
+        char selectedAction = selectGene();
+        executeAction(selectedAction);
 
         // Retrieve sensor readings and convert them to gene format
         int N = sensors.north == BATTERY ? 2 : sensors.north == EMPTY ? 1 : 0;
@@ -392,25 +387,28 @@ public:
         int S = sensors.south == BATTERY ? 2 : sensors.south == EMPTY ? 1 : 0;
         int W = sensors.west == BATTERY ? 2 : sensors.west == EMPTY ? 1 : 0;
 
-        // Choose the best gene based on the current sensor readings
         int bestGeneIndex = genes.ChooseBestGene(N, E, S, W);
+        char action = genes.GetAction(bestGeneIndex);
 
-        if (bestGeneIndex != -1) {
-            const Genes::GenePool& selectedGene = genes.getGenePool(bestGeneIndex);
-            if (IsValidMove(selectedGene, grid)) {
-                char action = genes.GetAction(bestGeneIndex);
-                // Execute the action...
-            } else {
-                // Handle the case when the move is not valid...
-            }
-        } else {
-            // Default action or handle no suitable gene found...
+        // Battery prioritization
+        if (N == 2) action = 'N';
+        else if (E == 2) action = 'E';
+        else if (S == 2) action = 'S';
+        else if (W == 2) action = 'W';
+
+        // Execute the action
+        switch (action) {
+            case 'N': if(sensors.north != WALL) MoveNorth(grid); break;
+            case 'E': if(sensors.east != WALL) MoveEast(grid); break;
+            case 'S': if(sensors.south != WALL) MoveSouth(grid); break;
+            case 'W': if(sensors.west != WALL) MoveWest(grid); break;
         }
+        // Log chosen gene pool index and action
+        cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
 
         // Log the robot's new position after the move
         cout << "New Position: (" << x << ", " << y << ")" << endl;
     }
-
 
 
     // Method to breed with another robot and produce an offspring
@@ -753,7 +751,7 @@ void TestGridBoundaries() {
     robot.GridReporting(grid);
 }
 
-void TestGeneLogic(Grid& grid) {
+void TestGeneLogic() {
     Genes genes;
     // Print the genes for reference
     genes.printGenes();
