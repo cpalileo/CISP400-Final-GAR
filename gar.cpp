@@ -10,35 +10,32 @@ enum GridReading { EMPTY, ROBOT, BATTERY, WALL};
 
 // Forward declarations
 class Robot;
-class Genes;
 
-
-//***START GENES CLASS***START GENES CLASS***START GENES CLASS***START GENES CLASS
 class Genes {
 private:
-    // Define the GenePool structure as an array of 5 integers
-    // First 4 integers for the states (N, E, S, W) and the last one for the action
+    // GenePool structure made up of an array of 5 integers
+    // 1 through 4 represent (N, E, S, W), last one for teh action
     struct GenePool {
-        int data[5]; // 4 states and 1 action
+        int data[5]; // 4 states, 1 action
     };
 
-    // Array to store 16 genes
+    // Array stores 16 gene pools
     GenePool genes[16];
 
 public:
-    // Constructor to initialize the genes with random values
+    // Constructor initialize genes with random values
     Genes() {
         for (int i = 0; i < 16; ++i) {
             for (int j = 0; j < 4; ++j) {
-                // Randomly initialize the state values (0, 1, or 2)
+                // Initizlize random state value
                 genes[i].data[j] = rand() % 3;
             }
-            // Randomly initialize the action (represented as integers 0-3 corresponding to N, E, S, W)
+            // Initialize action (N, E, S, W) randomly
             genes[i].data[4] = rand() % 4;
         }
     }
 
-    // Method to get the action for a gene
+    // Method gets gene's action
     char GetAction(int geneIndex) const {
         if (geneIndex < 0 || geneIndex >= 16) {
             return 'N'; // Default action
@@ -53,10 +50,11 @@ public:
         }
     }
 
-    // Method to find the best matching gene pool based on current sensor readings
+    // Find best matching genepool based on sensor readings
+    // Added to keep robot from moving back and forth
     int ChooseBestGene(int N, int E, int S, int W) const {
-        int bestMatchIndex = 0; // Assume the first gene pool is the best initially
-        int bestMatchScore = -1; // Start with a low score
+        int bestMatchIndex = 0; // Assume first gene pool is best initially
+        int bestMatchScore = -1; // Start with low score
 
         for (int i = 0; i < 16; ++i) {
             int score = 0;
@@ -88,6 +86,7 @@ public:
 
 
     void printGenes() const {
+        // DEBUG
         // cout << setw(10) << "Gene" << setw(10) << "N" << setw(10) << "E" << setw(10) << "S" << setw(10) << "W" << setw(10) << "Action" << endl;
         for (int i = 0; i < 16; ++i) {
             cout << setw(10) << i;  // GenePool number
@@ -101,24 +100,24 @@ public:
                 case 1: action = 'E'; break;
                 case 2: action = 'S'; break;
                 case 3: action = 'W'; break;
-                default: action = '?'; break; // In case of an unexpected value
+                default: action = '?'; break; // Catch errors
             }
             cout << setw(10) << action << endl;
         }
     }
 
     const GenePool& getGenePool(int index) const{
-        // Ensure the index is within the bounds
+        // Keep index inbound
         if (index < 0 || index >= 16) {
             throw std::out_of_range("Index out of bounds");
         }
         return genes[index];    
     }
 
-    // Method to merge two sets of genes to create a new one
+    // Merge genes to create a new genes
     static Genes Merge(const Genes& parent1, const Genes& parent2) {
         Genes offspring;
-        int crossoverPoint = rand() % 16; // Using 16 as there are 16 genes
+        int crossoverPoint = rand() % 16; // For teh 16 genes
         for (int i = 0; i < 16; ++i) {
             offspring.genes[i] = (i < crossoverPoint) ? parent1.genes[i] : parent2.genes[i];
         }
@@ -127,36 +126,35 @@ public:
 };
 
 
-//***START GRID CLASS***START GRID CLASS***START GRID CLASS***START GRID CLASS
 class Grid {
 private:
     GridReading GridArray[12][12];
     Robot* robot; // Pointer to Robot
 
 public:
-    // Initializes all grid spaces to empty
+    // Initializes empty grid spaces 
     Grid() : robot(nullptr) {
         for (int i = 0; i < 12; ++i) {
             for (int j = 0; j < 12; ++j) {
                 GridArray[i][j] = EMPTY;
             }
         }
-        // Place walls around the grid
+        // Call to place wall around grid
         PlaceWalls();
         
-        // Randomly place batteries on the grid
-        PlaceBatteries(40);  // Assuming 40 batteries to be placed
+        // Randomly place batteries on grid
+        PlaceBatteries(40);  // 40 batteries
     }
 
     void PlaceWalls(){
-        // Place walls on top and bottom rows
+        // Place walls at top & bottom rows
         for (int i = 0; i < 12; ++i) {
             GridArray[0][i] = WALL; // Top row
             GridArray[11][i] = WALL; // Bottom row
         }
 
-        // Place walls on left and right columns
-        for (int i = 1; i < 11; ++i) { // Start and end at 1 and 11 to avoid overwriting corners
+        // Place walls at left & right columns
+        for (int i = 1; i < 11; ++i) { // Ours go to 11! (override corner protection)
             GridArray[i][0] = WALL; // Left column
             GridArray[i][11] = WALL; // Right column
         }
@@ -175,11 +173,11 @@ public:
     }
 
 
-    // BUILD UPON LATER POSSIBLY FOR SCANNING AND SUCH
+    // BUILD UPON LATER POSSIBLY FOR SCANNING AND SUCH IF CONTINUE TO HAVE
+    // PROBLEMS WITH ROBOT MOVEMENT AND BATTERY COLLECTION
     GridReading QueryCell(int x, int y) const {
         if (x >= 0 && x < 12 && y >= 0 && y < 12) {
             return GridArray[x][y];
-            // Add more logic as needed...
         } else {
             return WALL;  // For out-of-bounds
         }
@@ -190,7 +188,9 @@ public:
 
 
     void RemoveRobot(int x, int y) {
-        if (x >= 1 && x <= 10 && y >= 1 && y <= 10) { // Searches inner grid only
+        // Searches inner grid only
+        // Avoids surrounding walls
+        if (x >= 1 && x <= 10 && y >= 1 && y <= 10) { 
             GridArray[x][y] = EMPTY;  
         }
     }
@@ -200,23 +200,26 @@ public:
         int x, y;
 
         do {
-            // Generate random coordinates within the inner grid (excluding walls)
+            // Random coordinates for inner grid (no walls)
             x = rand() % 10 + 1;
             y = rand() % 10 + 1;
-        } while (GridArray[x][y] != EMPTY); // Repeat until an empty cell is found
+        } while (GridArray[x][y] != EMPTY); // Loop until empty cel found
 
-        // Place the battery in the found empty cell
+        // Place battery in empty cell
         GridArray[x][y] = BATTERY;
     }
 
 
     void RemoveBattery(int x, int y) {
-        if (x >= 1 && x <= 10 && y >= 1 && y <= 10) { // Searches inner grid only
+        // Searches inner grid only
+        // Avoids surrounding walls
+        if (x >= 1 && x <= 10 && y >= 1 && y <= 10) { 
             GridArray[x][y] = EMPTY;  
         }
     }
 
     void PrintGrid() const {
+        // DEBUG
         // cout << "Current Grid State:\n";
         for (int i = 0; i < 12; ++i) {
             for (int j = 0; j < 12; ++j) {
@@ -233,7 +236,7 @@ public:
         }
     }
 
-    //ADDED FOR TESTING PURPOSES
+    //DEBUG METHOD
     void PlaceBatteryAt(int x, int y) {
     if (x >= 1 && x <= 10 && y >= 1 && y <= 10) {
         GridArray[x][y] = BATTERY;
@@ -247,13 +250,12 @@ public:
 };
 
 
-//***START ROBOT CLASS***START ROBOT CLASS***START ROBOT CLASS***START ROBOT CLASS
 class Robot {
 private:
-    int x, y; // Position
-    int initialX, initialY; // Robot starting position
-    int energy; // Energy level
-    int batteriesCollected; // Running count of batteries collected
+    int x, y; 
+    int initialX, initialY; // Robot starting coordinates
+    int energy; 
+    int batteriesCollected; 
     static const int GENE_COUNT = 16;
     char lastAction = '\0';
     int actionStreak = 0;
@@ -265,18 +267,16 @@ private:
         GridReading west;
     } sensors;
 
-    
-    // Method to handle interaction with a grid cell (like collecting a battery)
+    // TEST Robot Tune Up
+    // Interaction with grid cell (like collecting a battery)
     void InteractWithGridCell(Grid& grid, int newX, int newY) {
         GridReading cellContent = grid.QueryCell(newX, newY);
         if (cellContent == BATTERY) {
             energy += 5; // +6 = +1 reset step deduction (-1) and +5 for battery
-            grid.RemoveBattery(newX, newY); // Remove the battery from the grid
-            batteriesCollected++; // Increment the number of batteries collected
+            grid.RemoveBattery(newX, newY);
+            batteriesCollected++; // Increment #batteries collected
         }
     }
-
-
 
 public:
     Genes genes; 
@@ -286,7 +286,7 @@ public:
         char action; // 'N', 'E', 'S', 'W'
     };
 
-    // Initialize sensors to default values
+    // Initialize sensors defalt vals
     Robot() : x(0), y(0), initialX(0), initialY(0), energy(5), batteriesCollected(0), lastAction('\0'), actionStreak(0) {
         sensors.north = EMPTY;
         sensors.south = EMPTY;
@@ -297,7 +297,7 @@ public:
     void SetPosition(int newX, int newY) {
         x = newX;
         y = newY;
-        if (initialX == 0 && initialY == 0) { // Check if it's the first time setting the position
+        if (initialX == 0 && initialY == 0) { // Check to see if initial setup
             initialX = newX;
             initialY = newY;
         }
@@ -309,9 +309,6 @@ public:
         sensors.south = (y < 10) ? grid.QueryCell(x, y + 1) : WALL;
         sensors.west = (x > 1) ? grid.QueryCell(x - 1, y) : WALL;
     }
-
-
-
 
     void MoveNorth(Grid& grid) {
         if (y > 0 && grid.QueryCell(x, y - 1) != WALL) {
@@ -346,54 +343,31 @@ public:
     }
 
 
-    // Function to select a gene pool based on sensor readings
+    // Pick genepool based on sensor readings
     char selectGene() {
-        int index = rand() % 16; // Select a random gene index
-        return genes.GetAction(index); // Use GetAction method to get the action character
+        int index = rand() % 16; // Select random gene index
+        return genes.GetAction(index); // gets gene's action
     }
 
-
-    // Function to execute the action
-    void executeAction(char action) {
-        // cout << "Executing action: " << action << endl;
-        // Implement the rest of the method...
-    }
-
-    // Fitness function to calculate the score based on batteries collected
+    // Calculate fitness score
     int CalculateFitness() const {
-        return batteriesCollected; // Assuming batteriesCollected is maintained correctly during the robot's run
+        return batteriesCollected; // score = #batteries collected
     }
-
-    // Getter for batteriesCollected (if not already implemented)
-    int GetBatteriesCollected() const {
-        return batteriesCollected;
-    }
-
-    void UpdateState() {
-        CollectBattery();
-    }
-
-    void MoveBasedOnGene() {
-        // Choose the best gene pool and move accordingly
-    }
-
-    void CollectBattery() {
-        // Increase power if on a battery and remove the battery from the grid
-    }
-
 
     // TEST MAKEDECISION METHOD
+    // GETTING BIG MODULATE ME
     void MakeDecision(Grid& grid) {
+        // DEBUG
         // Log current sensor readings
         // cout << "Grid State Before Decision:\n";
         // grid.PrintGrid();
 
         UpdateSensors(grid);
-
-        // cout << "Current Sensor Readings: N=" << sensors.north << ", E=" << sensors.east 
+        // DEBUG
+        // cout << "Sensor Readings: N=" << sensors.north << ", E=" << sensors.east 
         //     << ", S=" << sensors.south << ", W=" << sensors.west << endl;
 
-        // Logic to choose action based on sensors
+        // Action determined by sensor
         int N = sensors.north == BATTERY ? 2 : sensors.north == EMPTY ? 1 : 0;
         int E = sensors.east == BATTERY ? 2 : sensors.east == EMPTY ? 1 : 0;
         int S = sensors.south == BATTERY ? 2 : sensors.south == EMPTY ? 1 : 0;
@@ -402,13 +376,13 @@ public:
         int bestGeneIndex = genes.ChooseBestGene(N, E, S, W);
         char action = genes.GetAction(bestGeneIndex);
 
-        // Battery prioritization
+        // prioritize batteires
         if (N == 2) action = 'N';
         else if (E == 2) action = 'E';
         else if (S == 2) action = 'S';
         else if (W == 2) action = 'W';
 
-        // Check if the robot is stuck in a loop
+        // Check if robot stuck in a loop...again
         if (action == lastAction) {
             actionStreak++;
         } else {
@@ -416,11 +390,11 @@ public:
         }
 
         if (actionStreak > 2) {
-            action = FindAlternativeAction(); // Find an alternative action
+            action = FindAlternativeAction(); // !!!!!
             actionStreak = 0;
         }
 
-        // Execute the chosen action
+        // Execute chosen action
         switch (action) {
             case 'N': if(sensors.north != WALL) MoveNorth(grid); break;
             case 'E': if(sensors.east != WALL) MoveEast(grid); break;
@@ -428,25 +402,27 @@ public:
             case 'W': if(sensors.west != WALL) MoveWest(grid); break;
         }
 
+        // DEBUG
         // Log chosen gene pool index and action
         // cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
 
-        // Log the robot's new position after the move
+        // DEBUG
+        // Log robot's new position after move
         // cout << "New Position: (" << x << ", " << y << ")" << endl;
 
         lastAction = action;
 
-        // Check for energy depletion
+        // Check that robot energy is properly draining
         if (energy <= 0) {
+            // DEBUG
             // cout << "Energy depleted. Robot stopped." << endl;
             return;
         }
     }
 
-    // Method to find an alternative action (if robot gets stuck)
+    // Find alternative action (when robot is stuck!!!)
     char FindAlternativeAction() {
-        // This method should provide an alternative action when the robot is stuck
-        // For simplicity, let's just return a random action for now
+        // Returns a random action...just do something else!!!
         int randomAction = rand() % 4;
         switch (randomAction) {
             case 0: return 'N';
@@ -458,7 +434,7 @@ public:
     }
 
 
-    // Method to execute the action and update energy
+    // Move and spend energy
     void ExecuteAction(char action, Grid& grid) {
         switch (action) {
             case 'N': MoveNorth(grid); break;
@@ -466,12 +442,12 @@ public:
             case 'S': MoveSouth(grid); break;
             case 'W': MoveWest(grid); break;
         }
-        // Reducing energy after every action
+        // Deplete energy after action
         energy--;
     }
 
 
-    // Method to breed with another robot and produce an offspring
+    // "Breed" robots...more like clone really.
     Robot Breed(const Robot& partner) const {
         Robot offspring;
             offspring.genes = Genes::Merge(this->genes, partner.genes);
@@ -482,40 +458,39 @@ public:
 
     }
 
-
-    void generateReport(int turns) const {
+    // DEBUG
+    // void generateReport(int turns) const {
         // cout << "Robot Performance Report:" << endl;
         // cout << "Starting Position: (" << initialX << ", " << initialY << ")" << endl;
         // cout << "Ending Position: (" << x << ", " << y << ")" << endl;
         // cout << "Turns before death: " << turns << endl;
         // cout << "Batteries Collected: " << batteriesCollected << endl;
-    }
+    // }
 
     void run(Grid &grid) {
-        int turns = 0; // Counter for the number of turns
+        int turns = 0; // Couns # of turns
 
-        // Set initial position (if not already set)
+        // Set starting position (if not done)
         initialX = x;
         initialY = y;
 
-        // Simulation loop
+        // Sim loop
         while (energy > 0) {
-            MakeDecision(grid); // Make a move based on the gene pool decision
-            turns++; // Increment turn count
+            MakeDecision(grid); // Make move depeding on genePool
+            turns++; // Increment count
 
-            // Check for robot's death
+            // Check for drained robots
             if (energy <= 0) {
                 break;
             }
         }
 
+        // DEBUG
         // Generate performance report
-        generateReport(turns);
+        // generateReport(turns);
     }
 
     void GridReporting(const Grid& grid);
-    // ... additional methods ...
-
     //ADDED FOR TESTING PURPOSES
     void SetEnergy(int newEnergy) {
         energy = newEnergy;
@@ -537,42 +512,9 @@ public:
         }
         energy --;
     }
-
-    void TestRobotSensorsAndBatteryCollection() {
-        Grid grid;
-        
-        // Place walls, batteries, and the robot on the grid for testing
-        grid.PlaceWalls();
-        grid.PlaceBatteries(10); // Place 10 batteries randomly
-        grid.PlaceRobot(*this);
-
-        // Test the robot's movements and sensor readings
-        for (int step = 0; step < 20; ++step) {
-            int batteriesBefore = GetBatteriesCollected();
-
-            UpdateSensors(grid);
-            MakeDecision(grid); // Assuming MakeDecision handles movement and interaction
-
-            int batteriesAfter = GetBatteriesCollected();
-
-            // Check if a battery was collected in this step
-            if (batteriesAfter > batteriesBefore) {
-                // cout << "\nBattery collected at step " << step << endl;
-            }
-
-            // Print sensor readings, energy level, and battery count for verification
-            // cout << "Step " << step << ": ";
-            // cout << "\nNorth: " << sensors.north << ", ";
-            // cout << "East: " << sensors.east << ", ";
-            // cout << "South: " << sensors.south << ", ";
-            // cout << "West: " << sensors.west << ", ";
-            // cout << "\nEnergy: " << GetEnergy() << ", ";
-            // cout << "Batteries Collected: " << batteriesAfter << "\n" << endl;
-        }
-    }
 };
 
-//***START BREEDING CLASS***START BREEDING CLASS***START BREEDING CLASS***START
+
 class Breeding {
 private:
     Robot* robots;
@@ -582,10 +524,10 @@ public:
     Breeding(Robot* robots, int size) : robots(robots), size(size) {}
 
     void SortRobotsByFitness() {
-        // Simple bubble sort
+        //  Bubble sort, thank you friends in discord for the reminder
         for (int i = 0; i < size - 1; ++i) {
             for (int j = 0; j < size - i - 1; ++j) {
-                if (robots[j].GetBatteriesCollected() < robots[j + 1].GetBatteriesCollected()) {
+                if (robots[j].CalculateFitness() < robots[j + 1].CalculateFitness()) {
                     Robot temp = robots[j];
                     robots[j] = robots[j + 1];
                     robots[j + 1] = temp;
@@ -597,276 +539,53 @@ public:
     double CalculateAverageFitness() const {
         double totalFitness = 0.0;
         for (int i = 0; i < size; ++i) {
-            totalFitness += robots[i].GetBatteriesCollected();
+            totalFitness += robots[i].CalculateFitness();
         }
         return totalFitness / size;
     }
 
     void BreedNewGeneration() {
-        // Assuming the top half are the fittest
+        // Top half highest scores
         int halfSize = size / 2;
 
         for (int i = halfSize; i < size; ++i) {
-            // Select two random parents from the top half
+            // Select two random robots from top 100
             int parent1Index = rand() % halfSize;
             int parent2Index = rand() % halfSize;
 
-            // Ensure different parents are selected
+            // Assure different parents are used
             while (parent1Index == parent2Index) {
                 parent2Index = rand() % halfSize;
             }
 
-            // Breed and replace the less fit robot
+            // Breed and replace less weaker robots
             robots[i] = robots[parent1Index].Breed(robots[parent2Index]);
         }
     }
 };
 
 
+void Grid::PlaceRobot(Robot& r) {
+    int x, y;
+    this ->robot = &r;
+    do {
+        // Random coordinates for inner grid (no walls)
+        x = rand() % 10 + 1;
+        y = rand() % 10 + 1;
+    } while (GridArray[x][y] != EMPTY); // Loop until empty cell found
 
-    void Grid::PlaceRobot(Robot& r) {
-        int x, y;
-        this ->robot = &r;
-        do {
-            // Generate random coordinates within the inner grid (excluding walls)
-            x = rand() % 10 + 1;
-            y = rand() % 10 + 1;
-        } while (GridArray[x][y] != EMPTY); // Repeat until an empty cell is found
-
-        // Place the robot in the found empty cell
-        GridArray[x][y] = ROBOT;
-        r.SetPosition(x, y);
-        this->robot = &r;
-    }
-
-void Robot::GridReporting(const Grid& grid) {
-    // Print initial position
-    // cout << "Robot initial position: (" << x << ", " << y << ")\n";
-    
-    // Move the robot (you may want to pass in a direction as a parameter)
-    // Example: MoveNorth(grid); This would need to be implemented in your Robot class
-
-    // Update sensors after the move
-    UpdateSensors(grid);
-
-    // Print new position and sensor readings
-    // cout << "Robot new position: (" << x << ", " << y << ")\n";
-    // cout << "Sensor Readings:\n";
-    // cout << "\tNorth: " << static_cast<char>(sensors.north) << "\n";
-    // cout << "\tSouth: " << static_cast<char>(sensors.south) << "\n";
-    // cout << "\tEast: " << static_cast<char>(sensors.east) << "\n";
-    // cout << "\tWest: " << static_cast<char>(sensors.west) << "\n";
-
-    // Print the current state of the grid (assuming Grid has a PrintGrid method)
-    grid.PrintGrid();
+    // Place robot empty cell
+    GridArray[x][y] = ROBOT;
+    r.SetPosition(x, y);
+    this->robot = &r;
 }
-
-
-void TestEnclosedRobot() {
-    Grid grid;
-    Robot robot;
-
-    // Place the robot in a cell completely surrounded by walls
-    grid.PlaceWalls();
-    robot.SetPosition(1, 1); // Assuming (1, 1) is surrounded by walls
-
-    robot.UpdateSensors(grid);
-    robot.GridReporting(grid);
-
-    // Simulate the robot trying to move in all directions
-    robot.MoveNorth(grid);
-    robot.MoveSouth(grid);
-    robot.MoveEast(grid);
-    robot.MoveWest(grid);
-    robot.GridReporting(grid);
-}
-
-
-void TestOpenFieldWithBatteries() {
-    Grid grid;
-    Robot robot;
-
-    // Set up the grid with several batteries
-    grid.PlaceBatteries(10); // Place 10 batteries randomly
-
-    // Place the robot at a random position
-    robot.SetPosition(rand() % 10 + 1, rand() % 10 + 1);
-
-    // Simulate robot movement and interaction
-    for (int i = 0; i < 5; ++i) { // Simulate 5 moves
-        int direction = rand() % 4;
-        switch (direction) {
-            case 0: robot.MoveNorth(grid); break;
-            case 1: robot.MoveSouth(grid); break;
-            case 2: robot.MoveEast(grid); break;
-            case 3: robot.MoveWest(grid); break;
-        }
-        robot.UpdateSensors(grid);
-        robot.GridReporting(grid);
-    }
-
-    // Simulate robot movement for multiple steps
-    for (int step = 0; step < 5; ++step) {
-        int direction = rand() % 4;  // Random direction
-        switch (direction) {
-            case 0: robot.MoveNorth(grid); break;
-            case 1: robot.MoveSouth(grid); break;
-            case 2: robot.MoveEast(grid); break;
-            case 3: robot.MoveWest(grid); break;
-        }
-        robot.UpdateSensors(grid);
-        robot.GridReporting(grid);
-    }
-}
-
-
-void TestBatteryCollection() {
-    Grid grid;
-    Robot robot;
-
-    // Place the robot at a known position
-    robot.SetPosition(5, 5);
-
-    // Place a battery at a position where the robot can reach
-    grid.PlaceBatteryAt(5, 4); // North of the robot
-
-    // Move the robot and check if it collects the battery
-    robot.MoveNorth(grid);
-    robot.UpdateSensors(grid);
-    robot.GridReporting(grid);
-
-    robot.MoveNorth(grid);  // Move towards the battery
-    robot.GridReporting(grid);
-}
-
-
-void TestWallAvoidance() {
-    Grid grid;
-    Robot robot;
-
-    // Place the robot close to a wall
-    robot.SetPosition(1, 1);
-
-    // Attempt to move the robot into the wall
-    robot.MoveNorth(grid); // North is a wall
-    robot.UpdateSensors(grid);
-    robot.GridReporting(grid);
-
-    // Simulate the robot trying to move into the wall
-    robot.MoveNorth(grid);  // North is a wall
-    robot.GridReporting(grid);
-}
-
-
-void TestRandomMovement() {
-    Grid grid;
-    Robot robot;
-
-    // Place the robot at a random position
-    robot.SetPosition(rand() % 10 + 1, rand() % 10 + 1);
-
-    // Simulate random movements
-    for (int i = 0; i < 10; ++i) {
-        int move = rand() % 4;
-        switch (move) {
-            case 0: robot.MoveNorth(grid); break;
-            case 1: robot.MoveSouth(grid); break;
-            case 2: robot.MoveEast(grid); break;
-            case 3: robot.MoveWest(grid); break;
-        }
-        robot.UpdateSensors(grid);
-        robot.GridReporting(grid);
-    }
-    for (int i = 0; i < 10; ++i) {
-        robot.MoveRandom(grid);  // Random movement
-        robot.GridReporting(grid);
-    }
-}
-
-
-void TestEnergyDepletion() {
-    Grid grid;
-    Robot robot;
-
-    // Set initial position and energy
-    robot.SetPosition(5, 5);
-    robot.SetEnergy(10); // Assuming there's a SetEnergy method
-
-    // Move the robot until energy depletes
-    while (robot.GetEnergy() > 0) { // Assuming there's a GetEnergy method
-        robot.MoveRandom(grid); // Assuming there's a MoveRandom method
-        robot.UpdateSensors(grid);
-        robot.GridReporting(grid);
-    }
-
-    while (robot.GetEnergy() > 0) {
-        robot.MoveRandom(grid);  // Random movement with energy depletion
-        robot.GridReporting(grid);
-    }
-}
-
-
-void TestGridBoundaries() {
-    Grid grid;
-    Robot robot;
-
-    // Place the robot at the edge of the grid
-    robot.SetPosition(10, 10);
-
-    // Try moving the robot beyond the grid boundaries
-    robot.MoveEast(grid); // East should be blocked by a wall
-    robot.MoveSouth(grid); // South should be blocked by a wall
-    robot.UpdateSensors(grid);
-    robot.GridReporting(grid);
-
-    robot.MoveEast(grid);  // East is a wall
-    robot.MoveSouth(grid);  // South is a wall
-    robot.GridReporting(grid);
-}
-
-void TestGeneLogic() {
-    Genes genes;
-    // Print the genes for reference
-    genes.printGenes();
-
-    // Define sensor conditions
-    int sensorConditions[][4] = {
-        {0, 0, 0, 0},  // All sensors detect wall
-        {1, 1, 1, 1},  // All sensors detect empty space
-        {2, 0, 0, 0},  // North sensor detects battery
-        // Add more sensor conditions as needed
-    };
-
-    // Number of conditions to test
-    const int numConditions = 3;  // Update this as you add more conditions
-
-    // Test gene pool logic for each condition
-    for (int i = 0; i < numConditions; ++i) {
-        int N = sensorConditions[i][0];
-        int E = sensorConditions[i][1];
-        int S = sensorConditions[i][2];
-        int W = sensorConditions[i][3];
-
-        int bestGeneIndex = genes.ChooseBestGene(N, E, S, W);
-        char action = genes.GetAction(bestGeneIndex);
-
-        // cout << "Condition: N=" << N << ", E=" << E << ", S=" << S << ", W=" << W << endl;
-        // cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
-    }
-}
-
 
 
 void PressEnterToContinue() {
     std::cout << "Press Enter to continue...";
-    std::cin.ignore();  // Ignore the newline character in the buffer
-    std::cin.get();     // Wait for the next input (Enter key)
+    std::cin.ignore(); 
+    std::cin.get();     
 }
-
-
-
-//**************************************************************TESTS
-
 
 
 int main() {
@@ -883,7 +602,7 @@ int main() {
             grid.PlaceRobot(robots[i]);
             robots[i].run(grid);  // Simulation
 
-            // Uncomment the following line to see each robot's simulation status with fitness score
+            // Uncomment line below for robot's simulation status fitness score
             // cout << "Robot " << i + 1 << " of Generation " << gen + 1 << " Fitness Score: " << robots[i].CalculateFitness() << endl;
         }
 
@@ -893,11 +612,11 @@ int main() {
         averageFitnessPerGeneration[gen] = avgFitness;
         breeding.BreedNewGeneration();
 
-        // Uncomment the following line to see live fitness scores and averages per generation
+        // Uncomment line to see live fitness scores and average/generation
         // cout << "Generation " << gen + 1 << " complete. Average Fitness: " << avgFitness << endl;
     }
 
-    // Print the summary table
+    // Print summary table
     cout << "Generation\tAverage Fitness\n";
     for (int i = 0; i < MAX_GENERATIONS; ++i) {
         cout << setw(3) << setfill('0') << i * MAX_ROBOTS + 1

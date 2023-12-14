@@ -1,1 +1,1 @@
-            cout << "Robot " << i + 1 << " of Generation " << gen + 1 << " Fitness Score: " << robots[i].GetFitnessScore() << endl;
+GetBatteriesCollected
