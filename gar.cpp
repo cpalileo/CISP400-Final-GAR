@@ -558,11 +558,25 @@ void Grid::PlaceRobot(Robot& r) {
     this->robot = &r;
 }
 
+void programGreeting() {
+cout << "    ____        __     ______          __                                                                            " << endl;
+cout << "   / __ )____  / /_   /_  __/_______  / /__                                                                          " << endl;
+cout << "  / __  / __ \\/ __/    / / / ___/ _ \\/ //_/                                                                          " << endl;
+cout << " / /_/ / /_/ / /_     / / / /  /  __/ ,<                                                                             " << endl;
+cout << "/_____/\\____/\\__/    /_/ /_/   \\___/_/|_|                                                                            " << endl;
+cout << "       ________             ______            __               __   ______                           __  _           " << endl;
+cout << "      /_  __/ /_   ___     / ____/   ______  / /   _____  ____/ /  / ____/__  ____  ___  _________ _/ /_(_)___  ____  " << endl;
+cout << "        / / / __ \\/ _ \\   / __/ | | / / __ \\/ / | / / _ \\/ __  /  / / __/ _ \\/ __ \\/ _ \\/ ___/ __ `/ __/ / __ \\/ __ \\" << endl;
+cout << "       / / / / / /  __/  / /___ | |/ / /_/ / /| |/ /  __/ /_/ /  / /_/ /  __/ / / /  __/ /  / /_/ / /_/ / /_/ / / / /" << endl;
+cout << "      /_/ /_/ /_/\\___/  /_____/ |___/\\____/_/ |___/\\___/\\__,_/   \\____/\\___/_/ /_/\\___/_/   \\__,_/\\__/_/\\____/_/ /_/" << endl;
 
-void PressEnterToContinue() {
-    std::cout << "Press Enter to continue...";
-    std::cin.ignore(); 
-    std::cin.get();     
+                                                                                                                     
+}
+
+void pressEnterToContinue() {
+   cout << "\nPress Enter to Begin...";
+   cin.ignore();
+   cin.get();     
 }
 
 
@@ -573,6 +587,9 @@ int main() {
     const int MAX_GENERATIONS = 5;
     Robot robots[MAX_ROBOTS];
     double averageFitnessPerGeneration[MAX_GENERATIONS] = {0};
+
+    programGreeting();
+    pressEnterToContinue();
 
     for (int gen = 0; gen < MAX_GENERATIONS; ++gen) {
         for (int i = 0; i < MAX_ROBOTS; ++i) {
@@ -595,7 +612,8 @@ int main() {
     }
 
     // Print summary table
-    cout << "Generation\tAverage Fitness\n";
+   cout << "Robot\t\tAverage Fitness\n";
+    cout << "Generation\tMeasuring Batteries Collected\n";    
     for (int i = 0; i < MAX_GENERATIONS; ++i) {
         cout << setw(3) << setfill('0') << i * MAX_ROBOTS + 1
              << " - " << setw(3) << setfill('0') << (i + 1) * MAX_ROBOTS
@@ -603,4 +621,5 @@ int main() {
     }
 
     return 0;
+
 }
