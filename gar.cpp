@@ -14,9 +14,9 @@ class Robot;
 class Genes {
 private:
     // GenePool structure made up of an array of 5 integers
-    // 1 through 4 represent (N, E, S, W), last one for teh action
+    // 1 through 4 represent (N, E, S, W), last one for teh direction
     struct GenePool {
-        int data[5]; // 4 states, 1 action
+        int data[5]; // 4 states, 1 direction
     };
 
     // Array stores 16 gene pools
@@ -30,18 +30,18 @@ public:
                 // Initizlize random state value
                 genes[i].data[j] = rand() % 3;
             }
-            // Initialize action (N, E, S, W) randomly
+            // Initialize direction (N, E, S, W) randomly
             genes[i].data[4] = rand() % 4;
         }
     }
 
-    // Method gets gene's action
-    char GetAction(int geneIndex) const {
+    // Method gets gene's Direction
+    char GetDirection(int geneIndex) const {
         if (geneIndex < 0 || geneIndex >= 16) {
-            return 'N'; // Default action
+            return 'N'; // Default direction
         }
-        int actionCode = genes[geneIndex].data[4];
-        switch (actionCode) {
+        int directionCode = genes[geneIndex].data[4];
+        switch (directionCode) {
             case 0: return 'N';
             case 1: return 'E';
             case 2: return 'S';
@@ -82,28 +82,6 @@ public:
         }
 
         return bestMatchIndex;
-    }
-
-
-    void printGenes() const {
-        // DEBUG
-        // cout << setw(10) << "Gene" << setw(10) << "N" << setw(10) << "E" << setw(10) << "S" << setw(10) << "W" << setw(10) << "Action" << endl;
-        for (int i = 0; i < 16; ++i) {
-            cout << setw(10) << i;  // GenePool number
-            for (int j = 0; j < 4; ++j) {
-                cout << setw(10) << genes[i].data[j];  // State values
-            }
-            // Print action
-            char action;
-            switch (genes[i].data[4]) {
-                case 0: action = 'N'; break;
-                case 1: action = 'E'; break;
-                case 2: action = 'S'; break;
-                case 3: action = 'W'; break;
-                default: action = '?'; break; // Catch errors
-            }
-            cout << setw(10) << action << endl;
-        }
     }
 
     const GenePool& getGenePool(int index) const{
@@ -257,8 +235,8 @@ private:
     int energy; 
     int batteriesCollected; 
     static const int GENE_COUNT = 16;
-    char lastAction = '\0';
-    int actionStreak = 0;
+    char lastDirection = '\0';
+    int directionStreak = 0;
 
     struct SensorReadings {
         GridReading north;
@@ -268,7 +246,7 @@ private:
     } sensors;
 
     // TEST Robot Tune Up
-    // Interaction with grid cell (like collecting a battery)
+    // Interdirection with grid cell (like collecting a battery)
     void InteractWithGridCell(Grid& grid, int newX, int newY) {
         GridReading cellContent = grid.QueryCell(newX, newY);
         if (cellContent == BATTERY) {
@@ -283,11 +261,11 @@ public:
 
     struct GenePool {
         int north, east, south, west;
-        char action; // 'N', 'E', 'S', 'W'
+        char direction; // 'N', 'E', 'S', 'W'
     };
 
     // Initialize sensors defalt vals
-    Robot() : x(0), y(0), initialX(0), initialY(0), energy(5), batteriesCollected(0), lastAction('\0'), actionStreak(0) {
+    Robot() : x(0), y(0), initialX(0), initialY(0), energy(5), batteriesCollected(0), lastDirection('\0'), directionStreak(0) {
         sensors.north = EMPTY;
         sensors.south = EMPTY;
         sensors.east = EMPTY;
@@ -346,7 +324,7 @@ public:
     // Pick genepool based on sensor readings
     char selectGene() {
         int index = rand() % 16; // Select random gene index
-        return genes.GetAction(index); // gets gene's action
+        return genes.GetDirection(index); // gets gene's direction
     }
 
     // Calculate fitness score
@@ -367,35 +345,35 @@ public:
         // cout << "Sensor Readings: N=" << sensors.north << ", E=" << sensors.east 
         //     << ", S=" << sensors.south << ", W=" << sensors.west << endl;
 
-        // Action determined by sensor
+        // Direction determined by sensor
         int N = sensors.north == BATTERY ? 2 : sensors.north == EMPTY ? 1 : 0;
         int E = sensors.east == BATTERY ? 2 : sensors.east == EMPTY ? 1 : 0;
         int S = sensors.south == BATTERY ? 2 : sensors.south == EMPTY ? 1 : 0;
         int W = sensors.west == BATTERY ? 2 : sensors.west == EMPTY ? 1 : 0;
 
         int bestGeneIndex = genes.ChooseBestGene(N, E, S, W);
-        char action = genes.GetAction(bestGeneIndex);
+        char direction = genes.GetDirection(bestGeneIndex);
 
         // prioritize batteires
-        if (N == 2) action = 'N';
-        else if (E == 2) action = 'E';
-        else if (S == 2) action = 'S';
-        else if (W == 2) action = 'W';
+        if (N == 2) direction = 'N';
+        else if (E == 2) direction = 'E';
+        else if (S == 2) direction = 'S';
+        else if (W == 2) direction = 'W';
 
         // Check if robot stuck in a loop...again
-        if (action == lastAction) {
-            actionStreak++;
+        if (direction == lastDirection) {
+            directionStreak++;
         } else {
-            actionStreak = 0;
+            directionStreak = 0;
         }
 
-        if (actionStreak > 2) {
-            action = FindAlternativeAction(); // !!!!!
-            actionStreak = 0;
+        if (directionStreak > 2) {
+            direction = FindAlternativeDirection(); // !!!!!
+            directionStreak = 0;
         }
 
-        // Execute chosen action
-        switch (action) {
+        // Execute chosen direction
+        switch (direction) {
             case 'N': if(sensors.north != WALL) MoveNorth(grid); break;
             case 'E': if(sensors.east != WALL) MoveEast(grid); break;
             case 'S': if(sensors.south != WALL) MoveSouth(grid); break;
@@ -403,14 +381,14 @@ public:
         }
 
         // DEBUG
-        // Log chosen gene pool index and action
-        // cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
+        // Log chosen gene pool index and direction
+        // cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Direction: " << direction << endl;
 
         // DEBUG
         // Log robot's new position after move
         // cout << "New Position: (" << x << ", " << y << ")" << endl;
 
-        lastAction = action;
+        lastDirection = direction;
 
         // Check that robot energy is properly draining
         if (energy <= 0) {
@@ -420,29 +398,29 @@ public:
         }
     }
 
-    // Find alternative action (when robot is stuck!!!)
-    char FindAlternativeAction() {
-        // Returns a random action...just do something else!!!
-        int randomAction = rand() % 4;
-        switch (randomAction) {
+    // Find alternative direction (when robot is stuck!!!)
+    char FindAlternativeDirection() {
+        // Returns a random direction...just do something else!!!
+        int randomDirection = rand() % 4;
+        switch (randomDirection) {
             case 0: return 'N';
             case 1: return 'E';
             case 2: return 'S';
             case 3: return 'W';
-            default: return 'N'; // Default action
+            default: return 'N'; // Default direction
         }
     }
 
 
     // Move and spend energy
-    void ExecuteAction(char action, Grid& grid) {
-        switch (action) {
+    void ExecuteDirection(char direction, Grid& grid) {
+        switch (direction) {
             case 'N': MoveNorth(grid); break;
             case 'E': MoveEast(grid); break;
             case 'S': MoveSouth(grid); break;
             case 'W': MoveWest(grid); break;
         }
-        // Deplete energy after action
+        // Deplete energy after direction
         energy--;
     }
 
