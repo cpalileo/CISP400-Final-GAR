@@ -1,6 +1,7 @@
 #include<iostream>
 #include<iomanip>
 #include<cstdlib>
+#include <string>
 #include<ctime>
 using namespace std;
 
@@ -556,7 +557,7 @@ void Grid::PlaceRobot(Robot& r) {
     GridArray[x][y] = ROBOT;
     r.SetPosition(x, y);
     this->robot = &r;
-}
+};
 
 void programGreeting() {
 cout << "    ____        __     ______          __                                                                            " << endl;
@@ -571,55 +572,80 @@ cout << "       / / / / / /  __/  / /___ | |/ / /_/ / /| |/ /  __/ /_/ /  / /_/ 
 cout << "      /_/ /_/ /_/\\___/  /_____/ |___/\\____/_/ |___/\\___/\\__,_/   \\____/\\___/_/ /_/\\___/_/   \\__,_/\\__/_/\\____/_/ /_/" << endl;
 
                                                                                                                      
-}
+};
 
-void pressEnterToContinue() {
-   cout << "\nPress Enter to Begin...";
-   cin.ignore();
-   cin.get();     
-}
 
+int menu(int& choice, bool firstTime) {
+    if (firstTime) {
+        cout << "\nYou are now part of the collective. There is no escape!" << endl;
+    } else {
+        cout << "\nFauxcutus is regenerating. What will you do?" << endl;
+    }
+    cout << "1) Assimilate new bots." << endl;
+    cout << "2) Warp out of here!" << endl;
+    
+    string input;
+    while (true) {
+        getline(cin, input);
+        // Check if input is "1" or "2"
+        if (input == "1" || input == "2") {
+            // Convert string to integer
+            choice = stoi(input);
+            break;
+        } else {
+            cout << "Enter 1 or 2. Resistance is futile: ";
+        }
+    }
+    return choice;
+}
 
 int main() {
+    int choice;
+    bool firstTime = true;
     srand(static_cast<unsigned int>(time(0)));
 
     const int MAX_ROBOTS = 200;
-    const int MAX_GENERATIONS = 5;
+    const int MAX_GENERATIONS = 10;
     Robot robots[MAX_ROBOTS];
     double averageFitnessPerGeneration[MAX_GENERATIONS] = {0};
 
     programGreeting();
-    pressEnterToContinue();
+    menu(choice, firstTime);
+    firstTime = false;
+    while (choice != 2) {
+        for (int gen = 0; gen < MAX_GENERATIONS; ++gen) {
+            for (int i = 0; i < MAX_ROBOTS; ++i) {
+                Grid grid;
+                grid.PlaceRobot(robots[i]);
+                robots[i].run(grid);  // Simulation
 
-    for (int gen = 0; gen < MAX_GENERATIONS; ++gen) {
-        for (int i = 0; i < MAX_ROBOTS; ++i) {
-            Grid grid;
-            grid.PlaceRobot(robots[i]);
-            robots[i].run(grid);  // Simulation
+                // Uncomment line below for robot's simulation status fitness score
+                // cout << "Robot " << i + 1 << " of Generation " << gen + 1 << " Fitness Score: " << robots[i].CalculateFitness() << endl;
+            }
+            Breeding breeding(robots, MAX_ROBOTS);
+            breeding.SortRobotsByFitness();
+            double avgFitness = breeding.CalculateAverageFitness();
+            averageFitnessPerGeneration[gen] = avgFitness;
+            breeding.BreedNewGeneration();
 
-            // Uncomment line below for robot's simulation status fitness score
-            // cout << "Robot " << i + 1 << " of Generation " << gen + 1 << " Fitness Score: " << robots[i].CalculateFitness() << endl;
+            // Uncomment line to see live fitness scores and average/generation
+            // cout << "Generation " << gen + 1 << " complete. Average Fitness: " << avgFitness << endl;
+        }
+        // Print summary table
+        cout << "\nBot Drone\tAverage Drone Fitness\n";
+        cout << "Generation\tXilithium Collected\n";    
+        for (int i = 0; i < MAX_GENERATIONS; ++i) {
+            cout << setw(3) << setfill('0') << i * MAX_ROBOTS + 1
+                << " - " << setw(3) << setfill('0') << (i + 1) * MAX_ROBOTS
+                << "\t" << fixed << setprecision(3) << averageFitnessPerGeneration[i] << endl;
         }
 
-        Breeding breeding(robots, MAX_ROBOTS);
-        breeding.SortRobotsByFitness();
-        double avgFitness = breeding.CalculateAverageFitness();
-        averageFitnessPerGeneration[gen] = avgFitness;
-        breeding.BreedNewGeneration();
-
-        // Uncomment line to see live fitness scores and average/generation
-        // cout << "Generation " << gen + 1 << " complete. Average Fitness: " << avgFitness << endl;
+        menu(choice, firstTime);
+        cout << "1) To continue assimilating." << endl;
+        cout << "2) Warp out of here!" << endl;
     }
-
-    // Print summary table
-   cout << "Robot\t\tAverage Fitness\n";
-    cout << "Generation\tMeasuring Batteries Collected\n";    
-    for (int i = 0; i < MAX_GENERATIONS; ++i) {
-        cout << setw(3) << setfill('0') << i * MAX_ROBOTS + 1
-             << " - " << setw(3) << setfill('0') << (i + 1) * MAX_ROBOTS
-             << "\t" << fixed << setprecision(3) << averageFitnessPerGeneration[i] << endl;
-    }
-
+    cout << "Helm...warp 9.6! Engage!\n" << endl;
     return 0;
 
-}
+};
+
