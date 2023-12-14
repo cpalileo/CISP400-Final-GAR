@@ -88,7 +88,7 @@ public:
 
 
     void printGenes() const {
-        cout << setw(10) << "Gene" << setw(10) << "N" << setw(10) << "E" << setw(10) << "S" << setw(10) << "W" << setw(10) << "Action" << endl;
+        // cout << setw(10) << "Gene" << setw(10) << "N" << setw(10) << "E" << setw(10) << "S" << setw(10) << "W" << setw(10) << "Action" << endl;
         for (int i = 0; i < 16; ++i) {
             cout << setw(10) << i;  // GenePool number
             for (int j = 0; j < 4; ++j) {
@@ -217,7 +217,7 @@ public:
     }
 
     void PrintGrid() const {
-        cout << "Current Grid State:\n";
+        // cout << "Current Grid State:\n";
         for (int i = 0; i < 12; ++i) {
             for (int j = 0; j < 12; ++j) {
                 char displayChar = ' ';
@@ -255,6 +255,8 @@ private:
     int energy; // Energy level
     int batteriesCollected; // Running count of batteries collected
     static const int GENE_COUNT = 16;
+    char lastAction = '\0';
+    int actionStreak = 0;
 
     struct SensorReadings {
         GridReading north;
@@ -285,7 +287,7 @@ public:
     };
 
     // Initialize sensors to default values
-    Robot() : x(0), y(0), initialX(0), initialY(0), energy(5), batteriesCollected(0) {
+    Robot() : x(0), y(0), initialX(0), initialY(0), energy(5), batteriesCollected(0), lastAction('\0'), actionStreak(0) {
         sensors.north = EMPTY;
         sensors.south = EMPTY;
         sensors.east = EMPTY;
@@ -353,7 +355,7 @@ public:
 
     // Function to execute the action
     void executeAction(char action) {
-        cout << "Executing action: " << action << endl;
+        // cout << "Executing action: " << action << endl;
         // Implement the rest of the method...
     }
 
@@ -383,18 +385,15 @@ public:
     // TEST MAKEDECISION METHOD
     void MakeDecision(Grid& grid) {
         // Log current sensor readings
-        cout << "Grid State Before Decision:\n";
-        grid.PrintGrid();
-
-        cout << "Current Sensor Readings: N=" << sensors.north << ", E=" << sensors.east 
-            << ", S=" << sensors.south << ", W=" << sensors.west << endl;
+        // cout << "Grid State Before Decision:\n";
+        // grid.PrintGrid();
 
         UpdateSensors(grid);
 
-        char selectedAction = selectGene();
-        executeAction(selectedAction);
+        // cout << "Current Sensor Readings: N=" << sensors.north << ", E=" << sensors.east 
+        //     << ", S=" << sensors.south << ", W=" << sensors.west << endl;
 
-        // Retrieve sensor readings and convert them to gene format
+        // Logic to choose action based on sensors
         int N = sensors.north == BATTERY ? 2 : sensors.north == EMPTY ? 1 : 0;
         int E = sensors.east == BATTERY ? 2 : sensors.east == EMPTY ? 1 : 0;
         int S = sensors.south == BATTERY ? 2 : sensors.south == EMPTY ? 1 : 0;
@@ -409,18 +408,66 @@ public:
         else if (S == 2) action = 'S';
         else if (W == 2) action = 'W';
 
-        // Execute the action
+        // Check if the robot is stuck in a loop
+        if (action == lastAction) {
+            actionStreak++;
+        } else {
+            actionStreak = 0;
+        }
+
+        if (actionStreak > 2) {
+            action = FindAlternativeAction(); // Find an alternative action
+            actionStreak = 0;
+        }
+
+        // Execute the chosen action
         switch (action) {
             case 'N': if(sensors.north != WALL) MoveNorth(grid); break;
             case 'E': if(sensors.east != WALL) MoveEast(grid); break;
             case 'S': if(sensors.south != WALL) MoveSouth(grid); break;
             case 'W': if(sensors.west != WALL) MoveWest(grid); break;
         }
+
         // Log chosen gene pool index and action
-        cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
+        // cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
 
         // Log the robot's new position after the move
-        cout << "New Position: (" << x << ", " << y << ")" << endl;
+        // cout << "New Position: (" << x << ", " << y << ")" << endl;
+
+        lastAction = action;
+
+        // Check for energy depletion
+        if (energy <= 0) {
+            // cout << "Energy depleted. Robot stopped." << endl;
+            return;
+        }
+    }
+
+    // Method to find an alternative action (if robot gets stuck)
+    char FindAlternativeAction() {
+        // This method should provide an alternative action when the robot is stuck
+        // For simplicity, let's just return a random action for now
+        int randomAction = rand() % 4;
+        switch (randomAction) {
+            case 0: return 'N';
+            case 1: return 'E';
+            case 2: return 'S';
+            case 3: return 'W';
+            default: return 'N'; // Default action
+        }
+    }
+
+
+    // Method to execute the action and update energy
+    void ExecuteAction(char action, Grid& grid) {
+        switch (action) {
+            case 'N': MoveNorth(grid); break;
+            case 'E': MoveEast(grid); break;
+            case 'S': MoveSouth(grid); break;
+            case 'W': MoveWest(grid); break;
+        }
+        // Reducing energy after every action
+        energy--;
     }
 
 
@@ -437,11 +484,11 @@ public:
 
 
     void generateReport(int turns) const {
-        cout << "Robot Performance Report:" << endl;
-        cout << "Starting Position: (" << initialX << ", " << initialY << ")" << endl;
-        cout << "Ending Position: (" << x << ", " << y << ")" << endl;
-        cout << "Turns before death: " << turns << endl;
-        cout << "Batteries Collected: " << batteriesCollected << endl;
+        // cout << "Robot Performance Report:" << endl;
+        // cout << "Starting Position: (" << initialX << ", " << initialY << ")" << endl;
+        // cout << "Ending Position: (" << x << ", " << y << ")" << endl;
+        // cout << "Turns before death: " << turns << endl;
+        // cout << "Batteries Collected: " << batteriesCollected << endl;
     }
 
     void run(Grid &grid) {
@@ -510,17 +557,17 @@ public:
 
             // Check if a battery was collected in this step
             if (batteriesAfter > batteriesBefore) {
-                cout << "\nBattery collected at step " << step << endl;
+                // cout << "\nBattery collected at step " << step << endl;
             }
 
             // Print sensor readings, energy level, and battery count for verification
-            cout << "Step " << step << ": ";
-            cout << "\nNorth: " << sensors.north << ", ";
-            cout << "East: " << sensors.east << ", ";
-            cout << "South: " << sensors.south << ", ";
-            cout << "West: " << sensors.west << ", ";
-            cout << "\nEnergy: " << GetEnergy() << ", ";
-            cout << "Batteries Collected: " << batteriesAfter << "\n" << endl;
+            // cout << "Step " << step << ": ";
+            // cout << "\nNorth: " << sensors.north << ", ";
+            // cout << "East: " << sensors.east << ", ";
+            // cout << "South: " << sensors.south << ", ";
+            // cout << "West: " << sensors.west << ", ";
+            // cout << "\nEnergy: " << GetEnergy() << ", ";
+            // cout << "Batteries Collected: " << batteriesAfter << "\n" << endl;
         }
     }
 };
@@ -594,7 +641,7 @@ public:
 
 void Robot::GridReporting(const Grid& grid) {
     // Print initial position
-    cout << "Robot initial position: (" << x << ", " << y << ")\n";
+    // cout << "Robot initial position: (" << x << ", " << y << ")\n";
     
     // Move the robot (you may want to pass in a direction as a parameter)
     // Example: MoveNorth(grid); This would need to be implemented in your Robot class
@@ -603,12 +650,12 @@ void Robot::GridReporting(const Grid& grid) {
     UpdateSensors(grid);
 
     // Print new position and sensor readings
-    cout << "Robot new position: (" << x << ", " << y << ")\n";
-    cout << "Sensor Readings:\n";
-    cout << "\tNorth: " << static_cast<char>(sensors.north) << "\n";
-    cout << "\tSouth: " << static_cast<char>(sensors.south) << "\n";
-    cout << "\tEast: " << static_cast<char>(sensors.east) << "\n";
-    cout << "\tWest: " << static_cast<char>(sensors.west) << "\n";
+    // cout << "Robot new position: (" << x << ", " << y << ")\n";
+    // cout << "Sensor Readings:\n";
+    // cout << "\tNorth: " << static_cast<char>(sensors.north) << "\n";
+    // cout << "\tSouth: " << static_cast<char>(sensors.south) << "\n";
+    // cout << "\tEast: " << static_cast<char>(sensors.east) << "\n";
+    // cout << "\tWest: " << static_cast<char>(sensors.west) << "\n";
 
     // Print the current state of the grid (assuming Grid has a PrintGrid method)
     grid.PrintGrid();
@@ -803,8 +850,8 @@ void TestGeneLogic() {
         int bestGeneIndex = genes.ChooseBestGene(N, E, S, W);
         char action = genes.GetAction(bestGeneIndex);
 
-        cout << "Condition: N=" << N << ", E=" << E << ", S=" << S << ", W=" << W << endl;
-        cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
+        // cout << "Condition: N=" << N << ", E=" << E << ", S=" << S << ", W=" << W << endl;
+        // cout << "Chosen Gene Pool Index: " << bestGeneIndex << ", Action: " << action << endl;
     }
 }
 
@@ -825,38 +872,37 @@ void PressEnterToContinue() {
 int main() {
     srand(static_cast<unsigned int>(time(0)));
 
-    // Test Phase
-    cout << "Starting test phase..." << endl;
-    Robot testRobot;
-    testRobot.TestRobotSensorsAndBatteryCollection();
-    cout << "Test phase complete." << endl;
-    PressEnterToContinue();
-
-    // Genetic Algorithm Simulation
     const int MAX_ROBOTS = 200;
-    const int MAX_GENERATIONS = 10;
+    const int MAX_GENERATIONS = 5;
     Robot robots[MAX_ROBOTS];
     double averageFitnessPerGeneration[MAX_GENERATIONS] = {0};
 
     for (int gen = 0; gen < MAX_GENERATIONS; ++gen) {
-        cout << "Running Generation " << gen + 1 << "..." << endl;
-
-        // Initialize and run each robot's simulation
         for (int i = 0; i < MAX_ROBOTS; ++i) {
-            // Set up the grid and place the robot
             Grid grid;
             grid.PlaceRobot(robots[i]);
-            robots[i].run(grid);  // Assuming 'run' handles the simulation
+            robots[i].run(grid);  // Simulation
+
+            // Uncomment the following line to see each robot's simulation status with fitness score
+            // cout << "Robot " << i + 1 << " of Generation " << gen + 1 << " Fitness Score: " << robots[i].CalculateFitness() << endl;
         }
 
-        // Breeding and Fitness Evaluation
         Breeding breeding(robots, MAX_ROBOTS);
         breeding.SortRobotsByFitness();
         double avgFitness = breeding.CalculateAverageFitness();
         averageFitnessPerGeneration[gen] = avgFitness;
-        breeding.BreedNewGeneration();  // Create the next generation
+        breeding.BreedNewGeneration();
 
-        cout << "Generation " << gen + 1 << " complete. Average Fitness: " << avgFitness << endl;
+        // Uncomment the following line to see live fitness scores and averages per generation
+        // cout << "Generation " << gen + 1 << " complete. Average Fitness: " << avgFitness << endl;
+    }
+
+    // Print the summary table
+    cout << "Generation\tAverage Fitness\n";
+    for (int i = 0; i < MAX_GENERATIONS; ++i) {
+        cout << setw(3) << setfill('0') << i * MAX_ROBOTS + 1
+             << " - " << setw(3) << setfill('0') << (i + 1) * MAX_ROBOTS
+             << "\t" << fixed << setprecision(3) << averageFitnessPerGeneration[i] << endl;
     }
 
     return 0;
