@@ -13,7 +13,7 @@ class Robot;
 class Genes;
 
 
-// Genes Class
+//***START GENES CLASS***START GENES CLASS***START GENES CLASS***START GENES CLASS
 class Genes {
 private:
     // Define the GenePool structure as an array of 5 integers
@@ -114,10 +114,20 @@ public:
         }
         return genes[index];    
     }
+
+    // Method to merge two sets of genes to create a new one
+    static Genes Merge(const Genes& parent1, const Genes& parent2) {
+        Genes offspring;
+        int crossoverPoint = rand() % 16; // Using 16 as there are 16 genes
+        for (int i = 0; i < 16; ++i) {
+            offspring.genes[i] = (i < crossoverPoint) ? parent1.genes[i] : parent2.genes[i];
+        }
+        return offspring;
+    }
 };
 
 
-// Grid Class
+//***START GRID CLASS***START GRID CLASS***START GRID CLASS***START GRID CLASS
 class Grid {
 private:
     GridReading GridArray[12][12];
@@ -237,7 +247,7 @@ public:
 };
 
 
-// Robot Class
+//***START ROBOT CLASS***START ROBOT CLASS***START ROBOT CLASS***START ROBOT CLASS
 class Robot {
 private:
     int x, y; // Position
@@ -373,6 +383,9 @@ public:
     // TEST MAKEDECISION METHOD
     void MakeDecision(Grid& grid) {
         // Log current sensor readings
+        cout << "Grid State Before Decision:\n";
+        grid.PrintGrid();
+
         cout << "Current Sensor Readings: N=" << sensors.north << ", E=" << sensors.east 
             << ", S=" << sensors.south << ", W=" << sensors.west << endl;
 
@@ -414,9 +427,7 @@ public:
     // Method to breed with another robot and produce an offspring
     Robot Breed(const Robot& partner) const {
         Robot offspring;
-        // Mix genes of 'this' robot and 'partner' to fill offspring's genes
-        // Implement the logic of gene pool mixing here
-
+            offspring.genes = Genes::Merge(this->genes, partner.genes);
         return offspring;
     }
 
@@ -480,43 +491,41 @@ public:
         energy --;
     }
 
-void TestRobotSensorsAndBatteryCollection() {
-    Grid grid;
-    
-    // Place walls, batteries, and the robot on the grid for testing
-    grid.PlaceWalls();
-    grid.PlaceBatteries(10); // Place 10 batteries randomly
-    grid.PlaceRobot(*this);
+    void TestRobotSensorsAndBatteryCollection() {
+        Grid grid;
+        
+        // Place walls, batteries, and the robot on the grid for testing
+        grid.PlaceWalls();
+        grid.PlaceBatteries(10); // Place 10 batteries randomly
+        grid.PlaceRobot(*this);
 
-    // Test the robot's movements and sensor readings
-    for (int step = 0; step < 20; ++step) {
-        int batteriesBefore = GetBatteriesCollected();
+        // Test the robot's movements and sensor readings
+        for (int step = 0; step < 20; ++step) {
+            int batteriesBefore = GetBatteriesCollected();
 
-        UpdateSensors(grid);
-        MakeDecision(grid); // Assuming MakeDecision handles movement and interaction
+            UpdateSensors(grid);
+            MakeDecision(grid); // Assuming MakeDecision handles movement and interaction
 
-        int batteriesAfter = GetBatteriesCollected();
+            int batteriesAfter = GetBatteriesCollected();
 
-        // Check if a battery was collected in this step
-        if (batteriesAfter > batteriesBefore) {
-            cout << "\nBattery collected at step " << step << endl;
+            // Check if a battery was collected in this step
+            if (batteriesAfter > batteriesBefore) {
+                cout << "\nBattery collected at step " << step << endl;
+            }
+
+            // Print sensor readings, energy level, and battery count for verification
+            cout << "Step " << step << ": ";
+            cout << "\nNorth: " << sensors.north << ", ";
+            cout << "East: " << sensors.east << ", ";
+            cout << "South: " << sensors.south << ", ";
+            cout << "West: " << sensors.west << ", ";
+            cout << "\nEnergy: " << GetEnergy() << ", ";
+            cout << "Batteries Collected: " << batteriesAfter << "\n" << endl;
         }
-
-        // Print sensor readings, energy level, and battery count for verification
-        cout << "Step " << step << ": ";
-        cout << "\nNorth: " << sensors.north << ", ";
-        cout << "East: " << sensors.east << ", ";
-        cout << "South: " << sensors.south << ", ";
-        cout << "West: " << sensors.west << ", ";
-        cout << "\nEnergy: " << GetEnergy() << ", ";
-        cout << "Batteries Collected: " << batteriesAfter << "\n" << endl;
     }
-}
-
-
 };
 
-
+//***START BREEDING CLASS***START BREEDING CLASS***START BREEDING CLASS***START
 class Breeding {
 private:
     Robot* robots;
@@ -546,7 +555,24 @@ public:
         return totalFitness / size;
     }
 
-    // Add more methods if needed, like breeding logic
+    void BreedNewGeneration() {
+        // Assuming the top half are the fittest
+        int halfSize = size / 2;
+
+        for (int i = halfSize; i < size; ++i) {
+            // Select two random parents from the top half
+            int parent1Index = rand() % halfSize;
+            int parent2Index = rand() % halfSize;
+
+            // Ensure different parents are selected
+            while (parent1Index == parent2Index) {
+                parent2Index = rand() % halfSize;
+            }
+
+            // Breed and replace the less fit robot
+            robots[i] = robots[parent1Index].Breed(robots[parent2Index]);
+        }
+    }
 };
 
 
@@ -797,80 +823,41 @@ void PressEnterToContinue() {
 
 
 int main() {
-    Robot robot;
     srand(static_cast<unsigned int>(time(0)));
-    robot.TestRobotSensorsAndBatteryCollection();
 
+    // Test Phase
+    cout << "Starting test phase..." << endl;
+    Robot testRobot;
+    testRobot.TestRobotSensorsAndBatteryCollection();
+    cout << "Test phase complete." << endl;
+    PressEnterToContinue();
 
-    // const int MAX_ROBOTS = 200;
-    // const int MAX_GENERATIONS = 100;
+    // Genetic Algorithm Simulation
+    const int MAX_ROBOTS = 200;
+    const int MAX_GENERATIONS = 10;
+    Robot robots[MAX_ROBOTS];
+    double averageFitnessPerGeneration[MAX_GENERATIONS] = {0};
 
-    // Robot robot;
-    // Robot robots[MAX_ROBOTS];
-    // double averageFitnessPerGeneration[MAX_GENERATIONS] = {0};
+    for (int gen = 0; gen < MAX_GENERATIONS; ++gen) {
+        cout << "Running Generation " << gen + 1 << "..." << endl;
 
-    // // Optionally, run test functions here
-    // cout << "Running test functions..." << endl;
-    // TestEnclosedRobot();
-    // TestOpenFieldWithBatteries();
-    // TestBatteryCollection();
-    // TestWallAvoidance();
-    // TestRandomMovement();
-    // TestEnergyDepletion();
-    // TestGridBoundaries();
-    // TestGeneLogic();
+        // Initialize and run each robot's simulation
+        for (int i = 0; i < MAX_ROBOTS; ++i) {
+            // Set up the grid and place the robot
+            Grid grid;
+            grid.PlaceRobot(robots[i]);
+            robots[i].run(grid);  // Assuming 'run' handles the simulation
+        }
 
-    // for (int gen = 0; gen < MAX_GENERATIONS; ++gen) {
-    //     cout << "Generation: " << gen + 1 << endl;
+        // Breeding and Fitness Evaluation
+        Breeding breeding(robots, MAX_ROBOTS);
+        breeding.SortRobotsByFitness();
+        double avgFitness = breeding.CalculateAverageFitness();
+        averageFitnessPerGeneration[gen] = avgFitness;
+        breeding.BreedNewGeneration();  // Create the next generation
 
-    //     Grid grid; // Create a new grid for each generation
-
-    //     for (int i = 0; i < MAX_ROBOTS; ++i) {
-    //         cout << "Robot " << i + 1 << " on the grid." << endl;
-    //         robots[i].interpretSensors();
-    //         char selectedAction = robots[i].selectGene();
-    //         robots[i].executeAction(selectedAction);
-    //         // Resetting the grid for each robot
-    //         grid = Grid(); // Recreate the grid object to reset it
-    //         grid.PlaceBatteries(40); // Place batteries on the grid
-    //         grid.PlaceRobot(robots[i]); // Place the robot on the grid
-
-    //         // Print the grid state before the robot runs
-    //         grid.PrintGrid();
-    //         // PressEnterToContinue();
-
-    //         // Print the genes of the robot
-    //         robots[i].genes.printGenes();
-    //         // PressEnterToContinue();
-
-    //         // Run the robot on the grid
-    //         robots[i].run(grid);
-
-    //         // Print performance report for the robot
-    //         robots[i].PrintReport();
-    //         // PressEnterToContinue();
-    //     }
-
-    //     // Sorting and breeding logic here
-    //     Breeding breeding(robots, MAX_ROBOTS);
-    //     breeding.SortRobotsByFitness();
-    //     double avgFitness = breeding.CalculateAverageFitness();
-    //     averageFitnessPerGeneration[gen] = avgFitness;
-
-    //     // Resetting for next generation (if necessary)
-    //     // breeding.GenerateNextGeneration();  // This needs to be implemented
-
-    //     cout << "Generation " << gen + 1 << " complete. Average Fitness: " << avgFitness << endl;
-    // }
-
-    // cout << "Printing average fitness per 100 generations..." << endl;
-    // for (int i = 0; i < MAX_GENERATIONS; i += 100) {
-    //     double sum = 0.0;
-    //     for (int j = i; j < i + 100 && j < MAX_GENERATIONS; ++j) {
-    //         sum += averageFitnessPerGeneration[j];
-    //     }
-    //     cout << "Generations " << i + 1 << " - " << i + 100 << ": Average Fitness = " << (sum / 100.0) << endl;
-    // }
+        cout << "Generation " << gen + 1 << " complete. Average Fitness: " << avgFitness << endl;
+    }
 
     return 0;
 }
